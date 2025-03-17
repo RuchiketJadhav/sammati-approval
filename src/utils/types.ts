@@ -13,6 +13,13 @@ export enum UserRole {
   ADMIN = "ADMIN"
 }
 
+export enum ProposalType {
+  BUDGET = "BUDGET",
+  EQUIPMENT = "EQUIPMENT",
+  HIRING = "HIRING",
+  OTHER = "OTHER"
+}
+
 export interface User {
   id: string;
   name: string;
@@ -48,10 +55,21 @@ export interface Proposal {
   rejectedByName?: string;
   rejectionReason?: string;
   comments: Comment[];
+  // New fields
+  type: ProposalType;
+  budget?: string;
+  timeline?: string;
+  justification?: string;
+  department?: string;
 }
 
 export type ProposalFormData = {
   title: string;
   description: string;
   assignedTo: string;
+  type: ProposalType;
+  budget?: string;
+  timeline?: string;
+  justification?: string;
+  department?: string;
 };

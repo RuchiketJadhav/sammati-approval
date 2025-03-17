@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Proposal, ProposalStatus, Comment, ProposalFormData } from "../utils/types";
+import { Proposal, ProposalStatus, Comment, ProposalFormData, ProposalType } from "../utils/types";
 import { useAuth } from "./AuthContext";
 import { toast } from "sonner";
 
@@ -33,6 +33,9 @@ const DEMO_PROPOSALS: Proposal[] = [
     status: ProposalStatus.PENDING_SUPERIOR,
     assignedTo: "user2",
     assignedToName: "Jane Smith",
+    type: ProposalType.BUDGET,
+    budget: "$15,000",
+    timeline: "Q3 2023",
     comments: []
   },
   {
@@ -48,6 +51,10 @@ const DEMO_PROPOSALS: Proposal[] = [
     assignedToName: "Jane Smith",
     approvedBySuperior: true,
     approvedByAdmin: true,
+    type: ProposalType.EQUIPMENT,
+    budget: "$8,500",
+    justification: "Current equipment is over 5 years old and significantly slowing down productivity.",
+    timeline: "Next month",
     comments: [
       {
         id: "comment1",
@@ -83,6 +90,10 @@ const DEMO_PROPOSALS: Proposal[] = [
     rejectedBy: "user4",
     rejectedByName: "Sarah Williams",
     rejectionReason: "We need more details about the budget implications and specific requirements for this position.",
+    type: ProposalType.HIRING,
+    department: "Engineering",
+    justification: "Increased workload due to new projects.",
+    timeline: "Q2 2023",
     comments: [
       {
         id: "comment3",
@@ -145,7 +156,13 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       status: ProposalStatus.PENDING_SUPERIOR,
       assignedTo: data.assignedTo,
       assignedToName: assignedUser.name,
-      comments: []
+      type: data.type || ProposalType.OTHER,
+      comments: [],
+      // Add optional fields if they exist
+      ...(data.budget && { budget: data.budget }),
+      ...(data.timeline && { timeline: data.timeline }),
+      ...(data.justification && { justification: data.justification }),
+      ...(data.department && { department: data.department }),
     };
     
     setProposals(prev => [...prev, newProposal]);
@@ -154,11 +171,38 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateProposal = (id: string, data: Partial<Proposal>) => {
+    if (!currentUser) throw new Error("You must be logged in to update a proposal");
+    
+    const proposal = getProposalById(id);
+    if (!proposal) throw new Error("Proposal not found");
+    
+    // Check if user has permission to edit
+    if (currentUser.id !== proposal.createdBy) 
+      throw new Error("You do not have permission to edit this proposal");
+      
+    // Check if proposal can be edited
+    if (proposal.status !== ProposalStatus.DRAFT && 
+        proposal.status !== ProposalStatus.REJECTED)
+      throw new Error("This proposal cannot be edited as it is under review");
+    
+    // If assignedTo has changed, update assignedToName
+    let assignedToName = proposal.assignedToName;
+    if (data.assignedTo && data.assignedTo !== proposal.assignedTo) {
+      const assignedUser = getUserById(data.assignedTo);
+      if (!assignedUser) throw new Error("Assigned user not found");
+      assignedToName = assignedUser.name;
+    }
+    
     setProposals(prev => 
-      prev.map(proposal => 
-        proposal.id === id 
-          ? { ...proposal, ...data, updatedAt: Date.now() } 
-          : proposal
+      prev.map(p => 
+        p.id === id 
+          ? { 
+              ...p, 
+              ...data, 
+              assignedToName, 
+              updatedAt: Date.now() 
+            } 
+          : p
       )
     );
     toast.success("Proposal updated successfully");
