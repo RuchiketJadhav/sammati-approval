@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -12,7 +11,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserRole } from "@/utils/types";
+import { UserRole, ProposalFormData } from "@/utils/types";
 
 // Form schema with validation
 const formSchema = z.object({
@@ -21,6 +20,7 @@ const formSchema = z.object({
   assignedTo: z.string().min(1, "Please select a superior")
 });
 
+// Make sure this type matches the ProposalFormData interface in types.ts
 type ProposalFormValues = z.infer<typeof formSchema>;
 
 const ProposalForm: React.FC = () => {
@@ -41,7 +41,9 @@ const ProposalForm: React.FC = () => {
 
   const onSubmit = (values: ProposalFormValues) => {
     try {
-      const newProposal = createProposal(values);
+      // Since our schema validation ensures all fields are present and valid,
+      // we can safely assert that values matches ProposalFormData
+      const newProposal = createProposal(values as ProposalFormData);
       navigate(`/proposal/${newProposal.id}`);
     } catch (error) {
       console.error("Error creating proposal:", error);
