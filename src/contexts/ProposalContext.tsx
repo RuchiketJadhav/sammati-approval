@@ -131,12 +131,26 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const getAssignedProposals = (userId: string) => {
-    return proposals.filter(p => 
-      (p.assignedTo === userId && p.status !== ProposalStatus.APPROVED) || 
-      (p.status === ProposalStatus.PENDING_ADMIN && 
-       getUserById(userId)?.role === 'ADMIN' && 
-       p.status !== ProposalStatus.APPROVED)
-    );
+    const user = getUserById(userId);
+    
+    return proposals.filter(p => {
+      // Filter out approved proposals
+      if (p.status === ProposalStatus.APPROVED) {
+        return false;
+      }
+      
+      // Include if directly assigned to the user
+      if (p.assignedTo === userId) {
+        return true;
+      }
+      
+      // Include if pending admin and the user is admin
+      if (p.status === ProposalStatus.PENDING_ADMIN && user?.role === 'ADMIN') {
+        return true;
+      }
+      
+      return false;
+    });
   };
 
   const getProposalById = (id: string) => {
