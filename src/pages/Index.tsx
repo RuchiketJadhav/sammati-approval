@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -7,7 +8,7 @@ import { useProposals } from "@/contexts/ProposalContext";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusCircle, InboxIcon, PenTool } from "lucide-react";
-import { UserRole } from "@/utils/types";
+import { UserRole, ProposalStatus } from "@/utils/types";
 import { motion } from "framer-motion";
 
 const Dashboard = () => {
@@ -31,6 +32,11 @@ const Dashboard = () => {
 
   const myProposals = getUserProposals(currentUser.id);
   const assignedProposals = getAssignedProposals(currentUser.id);
+
+  // Count pending admin approvals specifically for the badge
+  const pendingAdminCount = currentUser.role === UserRole.ADMIN 
+    ? proposals.filter(p => p.status === ProposalStatus.PENDING_ADMIN).length 
+    : 0;
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -68,7 +74,11 @@ const Dashboard = () => {
             <InboxIcon className="mr-2 h-4 w-4" />
             <span>Assigned to Me</span>
             {assignedProposals.length > 0 && (
-              <span className="ml-2 rounded-full bg-pending/20 text-pending px-2 py-0.5 text-xs">
+              <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                pendingAdminCount > 0 && currentUser.role === UserRole.ADMIN 
+                  ? "bg-pending/20 text-pending" 
+                  : "bg-muted"
+              }`}>
                 {assignedProposals.length}
               </span>
             )}

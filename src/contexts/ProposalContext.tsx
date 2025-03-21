@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Proposal, ProposalStatus, Comment, ProposalFormData, ProposalType } from "../utils/types";
 import { useAuth } from "./AuthContext";
@@ -110,7 +109,7 @@ const DEMO_PROPOSALS: Proposal[] = [
 
 export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [proposals, setProposals] = useState<Proposal[]>([]);
-  const { currentUser, getUserById } = useAuth();
+  const { currentUser, getUserById, getAdmins } = useAuth();
 
   // Load demo data or from localStorage
   useEffect(() => {
@@ -132,7 +131,10 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const getAssignedProposals = (userId: string) => {
-    return proposals.filter(p => p.assignedTo === userId);
+    return proposals.filter(p => 
+      p.assignedTo === userId || 
+      (p.status === ProposalStatus.PENDING_ADMIN && getUserById(userId)?.role === 'ADMIN')
+    );
   };
 
   const getProposalById = (id: string) => {
@@ -241,6 +243,16 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (proposal.status === ProposalStatus.PENDING_SUPERIOR) {
           updatedProposal.approvedBySuperior = true;
           updatedProposal.status = ProposalStatus.PENDING_ADMIN;
+          
+          // When a superior approves, assign to an admin
+          const admins = getAdmins();
+          if (admins.length > 0) {
+            // Assign to the first admin for simplicity
+            const admin = admins[0];
+            updatedProposal.assignedTo = admin.id;
+            updatedProposal.assignedToName = admin.name;
+          }
+          
           toast.success("Proposal approved and forwarded to admin");
         } else if (proposal.status === ProposalStatus.PENDING_ADMIN) {
           updatedProposal.approvedByAdmin = true;
