@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -7,7 +6,7 @@ import CommentSection from "@/components/CommentSection";
 import { useProposals } from "@/contexts/ProposalContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
-import { Proposal, ProposalStatus, UserRole } from "@/utils/types";
+import { Proposal, ProposalStatus, UserRole, ProposalType } from "@/utils/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +30,11 @@ import {
   CheckCircle,
   Upload,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  Calendar,
+  DollarSign,
+  Building,
+  FileText
 } from "lucide-react";
 
 const ProposalDetails: React.FC = () => {
@@ -41,7 +44,7 @@ const ProposalDetails: React.FC = () => {
   const { currentUser } = useAuth();
   const [rejectionReason, setRejectionReason] = useState("");
   const [approvalComment, setApprovalComment] = useState("");
-  
+
   if (!id) {
     navigate("/");
     return null;
@@ -137,6 +140,121 @@ const ProposalDetails: React.FC = () => {
     }
   };
 
+  const renderProposalTypeDetails = () => {
+    switch(proposal.type) {
+      case ProposalType.BUDGET:
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            {proposal.budget && (
+              <div className="bg-muted/30 p-3 rounded-md">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-medium text-muted-foreground">Budget</h3>
+                </div>
+                <p>{proposal.budget}</p>
+              </div>
+            )}
+            {proposal.timeline && (
+              <div className="bg-muted/30 p-3 rounded-md">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-medium text-muted-foreground">Timeline</h3>
+                </div>
+                <p>{proposal.timeline}</p>
+              </div>
+            )}
+          </div>
+        );
+      case ProposalType.EQUIPMENT:
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            {proposal.budget && (
+              <div className="bg-muted/30 p-3 rounded-md">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-medium text-muted-foreground">Budget</h3>
+                </div>
+                <p>{proposal.budget}</p>
+              </div>
+            )}
+            {proposal.justification && (
+              <div className="bg-muted/30 p-3 rounded-md">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-medium text-muted-foreground">Justification</h3>
+                </div>
+                <p>{proposal.justification}</p>
+              </div>
+            )}
+            {proposal.timeline && (
+              <div className="bg-muted/30 p-3 rounded-md">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-medium text-muted-foreground">Timeline</h3>
+                </div>
+                <p>{proposal.timeline}</p>
+              </div>
+            )}
+          </div>
+        );
+      case ProposalType.HIRING:
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            {proposal.department && (
+              <div className="bg-muted/30 p-3 rounded-md">
+                <div className="flex items-center gap-2">
+                  <Building className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-medium text-muted-foreground">Department</h3>
+                </div>
+                <p>{proposal.department}</p>
+              </div>
+            )}
+            {proposal.justification && (
+              <div className="bg-muted/30 p-3 rounded-md">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-medium text-muted-foreground">Justification</h3>
+                </div>
+                <p>{proposal.justification}</p>
+              </div>
+            )}
+            {proposal.timeline && (
+              <div className="bg-muted/30 p-3 rounded-md">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-medium text-muted-foreground">Timeline</h3>
+                </div>
+                <p>{proposal.timeline}</p>
+              </div>
+            )}
+          </div>
+        );
+      case ProposalType.OTHER:
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            {proposal.timeline && (
+              <div className="bg-muted/30 p-3 rounded-md">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-medium text-muted-foreground">Timeline</h3>
+                </div>
+                <p>{proposal.timeline}</p>
+              </div>
+            )}
+            {proposal.justification && (
+              <div className="bg-muted/30 p-3 rounded-md">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-medium text-muted-foreground">Justification</h3>
+                </div>
+                <p>{proposal.justification}</p>
+              </div>
+            )}
+          </div>
+        );
+    }
+  };
+
   const handleApprove = () => {
     approveProposal(proposal.id, approvalComment);
     setApprovalComment("");
@@ -182,6 +300,13 @@ const ProposalDetails: React.FC = () => {
                 <div className="mb-6">
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
                   <p className="whitespace-pre-line">{proposal.description}</p>
+                </div>
+
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                    Proposal Type: <span className="capitalize">{proposal.type.toLowerCase().replace('_', ' ')}</span>
+                  </h3>
+                  {renderProposalTypeDetails()}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -306,3 +431,4 @@ const ProposalDetails: React.FC = () => {
 };
 
 export default ProposalDetails;
+
