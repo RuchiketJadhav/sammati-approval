@@ -132,8 +132,10 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const getAssignedProposals = (userId: string) => {
     return proposals.filter(p => 
-      p.assignedTo === userId || 
-      (p.status === ProposalStatus.PENDING_ADMIN && getUserById(userId)?.role === 'ADMIN')
+      (p.assignedTo === userId && p.status !== ProposalStatus.APPROVED) || 
+      (p.status === ProposalStatus.PENDING_ADMIN && 
+       getUserById(userId)?.role === 'ADMIN' && 
+       p.status !== ProposalStatus.APPROVED)
     );
   };
 
