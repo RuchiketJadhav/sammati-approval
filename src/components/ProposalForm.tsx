@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -14,30 +13,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserRole, ProposalFormData, ProposalType, ProposalStatus } from "@/utils/types";
 
-// Form schema with validation
 const formSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(100),
   description: z.string().min(10, "Description must be at least 10 characters"),
-  assignedTo: z.string().min(1, "Please select a superior"),
+  assignedTo: z.string().min(1, "Please select a user to assign to"),
   type: z.enum(["BUDGET", "EQUIPMENT", "HIRING", "OTHER"]),
-  // Optional fields that are required based on proposal type
   budget: z.string().optional(),
   timeline: z.string().optional(),
   justification: z.string().optional(),
   department: z.string().optional(),
 });
 
-// Make sure this type matches the ProposalFormData interface in types.ts
 type ProposalFormValues = z.infer<typeof formSchema>;
 
 const ProposalForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { createProposal, getProposalById, updateProposal } = useProposals();
-  const { getSuperiors, currentUser } = useAuth();
+  const { users, currentUser } = useAuth();
   const navigate = useNavigate();
   const [proposalType, setProposalType] = useState<ProposalType>(ProposalType.OTHER);
   
-  const superiors = getSuperiors();
+  const otherUsers = users.filter(user => user.id !== currentUser?.id);
   const isEditMode = Boolean(id);
   const currentProposal = id ? getProposalById(id) : null;
   
@@ -69,7 +65,6 @@ const ProposalForm: React.FC = () => {
     }
   });
 
-  // Update form fields when proposal type changes
   React.useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === 'type') {
@@ -81,8 +76,6 @@ const ProposalForm: React.FC = () => {
 
   const onSubmit = (values: ProposalFormValues) => {
     try {
-      // Since our schema validation ensures all fields are present and valid,
-      // we can safely assert that values matches ProposalFormData
       if (isEditMode && currentProposal) {
         updateProposal(currentProposal.id, values as ProposalFormData);
         navigate(`/proposal/${currentProposal.id}`);
@@ -198,7 +191,6 @@ const ProposalForm: React.FC = () => {
               )}
             />
             
-            {/* Dynamic fields based on proposal type */}
             {proposalType === ProposalType.BUDGET && (
               <FormField
                 control={form.control}
@@ -324,23 +316,23 @@ const ProposalForm: React.FC = () => {
               name="assignedTo"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assign To Superior</FormLabel>
+                  <FormLabel>Assign To User</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a superior" />
+                        <SelectValue placeholder="Select a user to assign" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {superiors.map(superior => (
-                        <SelectItem key={superior.id} value={superior.id}>
-                          {superior.name}
+                      {otherUsers.map(user => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.name} ({user.role})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    Choose the superior who will review this proposal
+                    Choose the user who will review this proposal
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
