@@ -1,23 +1,32 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProposals } from "@/contexts/ProposalContext";
+import { useProposalTypes } from "@/contexts/ProposalTypeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserRole, ProposalFormData, ProposalType, ProposalStatus } from "@/utils/types";
+import { UserRole, ProposalFormData, ProposalType, ProposalStatus, FieldType } from "@/utils/types";
+import { Checkbox } from "@/components/ui/checkbox";
 
+// Updated schema to accept both ProposalType enum values and custom type IDs
 const formSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(100),
   description: z.string().min(10, "Description must be at least 10 characters"),
   assignedTo: z.string().min(1, "Please select a user to assign to"),
-  type: z.enum(["BUDGET", "EQUIPMENT", "HIRING", "OTHER"]),
+  // Accept any string for type to support both enum values and custom type IDs
+  type: z.string().min(1, "Please select a proposal type"),
+  customTypeId: z.string().optional(),
+  // Dynamic fields will be handled separately
+  fieldValues: z.record(z.any()).optional(),
+  // Legacy fields
   budget: z.string().optional(),
   timeline: z.string().optional(),
   justification: z.string().optional(),
@@ -30,8 +39,11 @@ const ProposalForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { createProposal, getProposalById, updateProposal } = useProposals();
   const { users, currentUser } = useAuth();
+  const { getProposalTypeOptions, getCustomTypeById, getDefaultFieldsForType } = useProposalTypes();
   const navigate = useNavigate();
-  const [proposalType, setProposalType] = useState<ProposalType>(ProposalType.OTHER);
+  
+  const [selectedType, setSelectedType] = useState<string>("");
+  const [selectedTypeFields, setSelectedTypeFields] = useState<any[]>([]);
   
   const otherUsers = users.filter(user => user.id !== currentUser?.id);
   const isEditMode = Boolean(id);
@@ -42,13 +54,17 @@ const ProposalForm: React.FC = () => {
     (currentProposal.status === ProposalStatus.DRAFT || 
      currentProposal.status === ProposalStatus.REJECTED) : true;
 
+  const proposalTypeOptions = getProposalTypeOptions();
+
   const form = useForm<ProposalFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: currentProposal ? {
       title: currentProposal.title,
       description: currentProposal.description,
       assignedTo: currentProposal.assignedTo,
-      type: currentProposal.type || ProposalType.OTHER,
+      type: currentProposal.type.toString(),
+      customTypeId: currentProposal.customTypeId,
+      fieldValues: currentProposal.fieldValues || {},
       budget: currentProposal.budget,
       timeline: currentProposal.timeline,
       justification: currentProposal.justification,
@@ -58,6 +74,8 @@ const ProposalForm: React.FC = () => {
       description: "",
       assignedTo: "",
       type: ProposalType.OTHER,
+      customTypeId: "",
+      fieldValues: {},
       budget: "",
       timeline: "",
       justification: "",
@@ -65,14 +83,15 @@ const ProposalForm: React.FC = () => {
     }
   });
 
-  React.useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name === 'type') {
-        setProposalType(value.type as ProposalType);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form.watch]);
+  // Update fields when type changes
+  useEffect(() => {
+    const type = form.watch("type");
+    if (type) {
+      setSelectedType(type);
+      const fields = getDefaultFieldsForType(type);
+      setSelectedTypeFields(fields);
+    }
+  }, [form.watch("type"), getDefaultFieldsForType]);
 
   const onSubmit = (values: ProposalFormValues) => {
     try {
@@ -115,6 +134,77 @@ const ProposalForm: React.FC = () => {
     );
   }
 
+  // Render dynamic fields based on selected type
+  const renderDynamicFields = () => {
+    if (!selectedTypeFields.length) return null;
+
+    return (
+      <div className="space-y-6">
+        <h3 className="text-lg font-medium">Type-specific Fields</h3>
+        {selectedTypeFields.map((field) => (
+          <FormField
+            key={field.id}
+            control={form.control}
+            name={`fieldValues.${field.name}`}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>{field.label}</FormLabel>
+                <FormControl>
+                  {renderFieldInput(field, formField)}
+                </FormControl>
+                {field.description && (
+                  <FormDescription>{field.description}</FormDescription>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  // Render the appropriate input component based on field type
+  const renderFieldInput = (field, formField) => {
+    switch (field.type) {
+      case FieldType.TEXT:
+        return <Input {...formField} />;
+      case FieldType.TEXTAREA:
+        return <Textarea className="min-h-20" {...formField} />;
+      case FieldType.NUMBER:
+        return <Input type="number" {...formField} />;
+      case FieldType.DATE:
+        return <Input type="date" {...formField} />;
+      case FieldType.CHECKBOX:
+        return (
+          <Checkbox
+            checked={formField.value}
+            onCheckedChange={formField.onChange}
+          />
+        );
+      case FieldType.SELECT:
+        return (
+          <Select
+            onValueChange={formField.onChange}
+            defaultValue={formField.value}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select an option" />
+            </SelectTrigger>
+            <SelectContent>
+              {field.options?.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      default:
+        return <Input {...formField} />;
+    }
+  };
+
   return (
     <Card className="w-full max-w-3xl mx-auto">
       <CardHeader>
@@ -139,10 +229,11 @@ const ProposalForm: React.FC = () => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value={ProposalType.BUDGET}>Budget Request</SelectItem>
-                      <SelectItem value={ProposalType.EQUIPMENT}>Equipment Request</SelectItem>
-                      <SelectItem value={ProposalType.HIRING}>Hiring Request</SelectItem>
-                      <SelectItem value={ProposalType.OTHER}>Other</SelectItem>
+                      {proposalTypeOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormDescription>
@@ -191,125 +282,8 @@ const ProposalForm: React.FC = () => {
               )}
             />
             
-            {proposalType === ProposalType.BUDGET && (
-              <FormField
-                control={form.control}
-                name="budget"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Budget Amount</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter the requested budget amount" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Specify the exact budget amount needed
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-            
-            {proposalType === ProposalType.EQUIPMENT && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="budget"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Estimated Cost</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter the estimated cost" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        The approximate cost of the requested equipment
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="justification"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Business Justification</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Explain why this equipment is necessary" 
-                          className="min-h-20"
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Provide clear reasons why this equipment is needed
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
-            )}
-            
-            {proposalType === ProposalType.HIRING && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="department"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Department</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter the department for the new hire" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        The department where the new position will be located
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="justification"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Hiring Justification</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Explain why this position is necessary" 
-                          className="min-h-20"
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Provide clear reasons why this position needs to be filled
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
-            )}
-            
-            {(proposalType === ProposalType.BUDGET || proposalType === ProposalType.EQUIPMENT || proposalType === ProposalType.HIRING) && (
-              <FormField
-                control={form.control}
-                name="timeline"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Timeline</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter the expected timeline" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      When do you need this approved by?
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            {/* Render dynamic fields based on selected type */}
+            {renderDynamicFields()}
             
             <FormField
               control={form.control}
