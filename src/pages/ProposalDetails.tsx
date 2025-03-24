@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -39,7 +38,8 @@ import {
   FileText,
   Users,
   CheckSquare,
-  PlusCircle
+  PlusCircle,
+  Edit
 } from "lucide-react";
 import {
   Select,
@@ -135,6 +135,11 @@ const ProposalDetails: React.FC = () => {
                             proposal.pendingApprovers?.length === 0;
   
   const canApproveAsRegistrar = isRegistrar && proposal.status === ProposalStatus.PENDING_REGISTRAR;
+
+  const canEdit = isCreator && 
+                 (proposal.status === ProposalStatus.DRAFT || 
+                  proposal.status === ProposalStatus.REJECTED ||
+                  proposal.status === ProposalStatus.PENDING_SUPERIOR);
 
   const approvalProgress = getApprovalProgress(proposal.id);
 
@@ -460,6 +465,10 @@ const ProposalDetails: React.FC = () => {
     );
   };
 
+  const handleEditProposal = () => {
+    navigate(`/proposal/edit/${proposal.id}`);
+  };
+
   return (
     <Layout>
       <div className="flex items-center mb-6">
@@ -527,6 +536,13 @@ const ProposalDetails: React.FC = () => {
                 {renderApproverSelector()}
               </CardContent>
               <CardFooter className="pt-0 flex flex-wrap gap-3">
+                {canEdit && (
+                  <Button onClick={handleEditProposal} variant="outline">
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit Proposal
+                  </Button>
+                )}
+                
                 {canApprove && (
                   <div className="w-full">
                     <Textarea

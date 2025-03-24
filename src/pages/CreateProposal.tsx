@@ -10,6 +10,9 @@ const CreateProposal: React.FC = () => {
   return (
     <Layout>
       <div className="max-w-3xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6 text-center">
+          {id ? "Edit Proposal" : "Create New Proposal"}
+        </h1>
         <ProposalForm />
       </div>
     </Layout>

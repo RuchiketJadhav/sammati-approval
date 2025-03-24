@@ -214,12 +214,19 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!proposal) throw new Error("Proposal not found");
     
     // Check if user has permission to edit
-    if (currentUser.id !== proposal.createdBy) 
+    const isCreator = currentUser.id === proposal.createdBy;
+    const isAdmin = currentUser.role === UserRole.ADMIN;
+    
+    if (!isCreator && !isAdmin) 
       throw new Error("You do not have permission to edit this proposal");
       
     // Check if proposal can be edited
-    if (proposal.status !== ProposalStatus.DRAFT && 
-        proposal.status !== ProposalStatus.REJECTED)
+    const canEdit = isAdmin || (isCreator && 
+      (proposal.status === ProposalStatus.DRAFT || 
+       proposal.status === ProposalStatus.REJECTED ||
+       proposal.status === ProposalStatus.PENDING_SUPERIOR));
+    
+    if (!canEdit)
       throw new Error("This proposal cannot be edited as it is under review");
     
     // If assignedTo has changed, update assignedToName
