@@ -14,7 +14,7 @@ const ManageProposalTypes: React.FC = () => {
   return (
     <Layout>
       <div className="container py-6">
-        <h1 className="text-3xl font-bold mb-6">Manage Proposal Types</h1>
+        <h1 className="text-3xl font-bold mb-6">Sammati - Manage Proposal Types</h1>
         
         {!isAdmin ? (
           <Card>

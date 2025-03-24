@@ -45,7 +45,7 @@ const Navbar: React.FC = () => {
         <div className="flex items-center space-x-4">
           <Link to="/" className="text-xl font-bold flex items-center">
             <FileText className="mr-2 h-6 w-6" />
-            <span>ProposalFlow</span>
+            <span>Sammati</span>
           </Link>
 
           <div className="hidden md:flex space-x-1">
