@@ -17,11 +17,42 @@ export enum UserRole {
   REGISTRAR = "REGISTRAR"
 }
 
+// Base ProposalType enum for backward compatibility
 export enum ProposalType {
   BUDGET = "BUDGET",
   EQUIPMENT = "EQUIPMENT",
   HIRING = "HIRING",
   OTHER = "OTHER"
+}
+
+// New interface for custom proposal types
+export interface CustomProposalType {
+  id: string;
+  name: string;
+  description?: string;
+  requiredFields: ProposalField[];
+  createdAt: number;
+  createdBy: string;
+  updatedAt: number;
+}
+
+export enum FieldType {
+  TEXT = "TEXT",
+  TEXTAREA = "TEXTAREA",
+  NUMBER = "NUMBER",
+  DATE = "DATE",
+  SELECT = "SELECT",
+  CHECKBOX = "CHECKBOX"
+}
+
+export interface ProposalField {
+  id: string;
+  name: string;
+  label: string;
+  type: FieldType;
+  required: boolean;
+  options?: string[]; // For SELECT type fields
+  description?: string;
 }
 
 export interface User {
@@ -68,8 +99,12 @@ export interface Proposal {
   rejectedByName?: string;
   rejectionReason?: string;
   comments: Comment[];
-  // New fields
-  type: ProposalType;
+  // Type fields
+  type: ProposalType | string; // String for custom types
+  customTypeId?: string; // Reference to a custom type
+  // Dynamic fields based on customTypeId
+  fieldValues?: Record<string, any>;
+  // Legacy fields (kept for backward compatibility)
   budget?: string;
   timeline?: string;
   justification?: string;
@@ -85,7 +120,10 @@ export type ProposalFormData = {
   title: string;
   description: string;
   assignedTo: string;
-  type: ProposalType;
+  type: ProposalType | string;
+  customTypeId?: string;
+  fieldValues?: Record<string, any>;
+  // Legacy fields
   budget?: string;
   timeline?: string;
   justification?: string;

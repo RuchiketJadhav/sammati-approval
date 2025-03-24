@@ -1,11 +1,8 @@
 
-import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { UserRole } from "@/utils/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { CheckSquare, Menu, X, User, LogOut } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,171 +11,121 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  Home,
+  PlusCircle,
+  User,
+  LogOut,
+  FileText,
+  Settings
+} from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 
 const Navbar: React.FC = () => {
-  const { currentUser, logout, users, login } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const location = useLocation();
+  const { currentUser, logout } = useAuth();
+  const navigate = useNavigate();
 
-  const navItems = [
-    { name: "Dashboard", path: "/" },
-    { name: "New Proposal", path: "/create-proposal" },
-    { name: "Profile", path: "/profile" },
-  ];
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/70 backdrop-blur-md">
-      <div className="container flex h-16 items-center px-4">
-        <div className="flex items-center space-x-2">
-          <CheckSquare className="h-6 w-6" />
-          <span className="text-lg font-medium">ApprovalFlow</span>
+    <nav className="bg-background border-b">
+      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+          <Link to="/" className="text-xl font-bold flex items-center">
+            <FileText className="mr-2 h-6 w-6" />
+            <span>ProposalFlow</span>
+          </Link>
+
+          <div className="hidden md:flex space-x-1">
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/" className="flex items-center">
+                <Home className="mr-2 h-4 w-4" />
+                Dashboard
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/create-proposal" className="flex items-center">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                New Proposal
+              </Link>
+            </Button>
+            {currentUser?.role === UserRole.ADMIN && (
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/manage-types" className="flex items-center">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Manage Types
+                </Link>
+              </Button>
+            )}
+          </div>
         </div>
 
-        {/* Desktop navigation */}
-        <nav className="mx-6 hidden md:flex items-center space-x-4 lg:space-x-6 flex-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "text-sm font-medium transition-colors hover:text-primary/90",
-                location.pathname === item.path
-                  ? "text-primary"
-                  : "text-muted-foreground"
-              )}
-            >
-              {item.name}
-            </Link>
-          ))}
-        </nav>
-
-        {/* Mobile menu button */}
-        <div className="flex-1 flex justify-end md:hidden">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 p-0"
-            onClick={toggleMobileMenu}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-        </div>
-
-        {/* User menu */}
-        <div className="ml-auto flex items-center space-x-4">
-          {currentUser ? (
+        {currentUser ? (
+          <div className="flex items-center">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="relative h-9 w-9 rounded-full"
-                >
-                  <Avatar className="h-9 w-9">
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                  <Avatar>
                     <AvatarImage
                       src={currentUser.avatar}
                       alt={currentUser.name}
                     />
                     <AvatarFallback>
-                      {currentUser.name?.charAt(0).toUpperCase()}
+                      {getInitials(currentUser.name)}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>{currentUser.name}</DropdownMenuLabel>
-                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                  {currentUser.role}
+                <DropdownMenuLabel>
+                  <div>{currentUser.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {currentUser.email}
+                  </div>
+                  <div className="text-xs font-normal text-muted-foreground mt-1">
+                    Role: {currentUser.role}
+                  </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/profile" className="cursor-pointer">
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
-                  </Link>
+                <DropdownMenuItem onClick={() => navigate("/profile")}>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Profile</span>
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/create-proposal")}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  <span>New Proposal</span>
+                </DropdownMenuItem>
+                {currentUser.role === UserRole.ADMIN && (
+                  <DropdownMenuItem onClick={() => navigate("/manage-types")}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Manage Types</span>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => logout()}>
+                <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">Log in</Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Demo Users</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {users.map((user) => (
-                  <DropdownMenuItem
-                    key={user.id}
-                    onClick={() => login(user.id)}
-                  >
-                    <Avatar className="h-6 w-6 mr-2">
-                      <AvatarImage src={user.avatar} alt={user.name} />
-                      <AvatarFallback>
-                        {user.name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span>
-                      {user.name} ({user.role})
-                    </span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-      </div>
-
-      {/* Mobile navigation menu */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="md:hidden bg-background border-b"
-          >
-            <div className="px-4 py-5 flex flex-col space-y-4">
-              <div className="flex justify-end">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleMobileMenu}
-                  className="h-8 w-8 p-0"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-              {navItems.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={cn(
-                    "text-base font-medium py-2 transition-colors",
-                    location.pathname === item.path
-                      ? "text-primary"
-                      : "text-muted-foreground"
-                  )}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </div>
-          </motion.div>
+          </div>
+        ) : (
+          <Button onClick={() => navigate("/login")}>Login</Button>
         )}
-      </AnimatePresence>
-    </header>
+      </div>
+    </nav>
   );
 };
 
