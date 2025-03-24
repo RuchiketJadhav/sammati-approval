@@ -2,56 +2,63 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { User, UserRole } from "../utils/types";
 
-// Sample users for demonstration
+// Updated users from the image data
 const DEMO_USERS: User[] = [
   {
     id: "user1",
-    name: "John Doe",
-    email: "john@example.com",
-    role: UserRole.USER,
+    name: "Registrar",
+    email: "registrar@chanakyauniversity.edu.in",
+    role: UserRole.REGISTRAR,
     avatar: "https://i.pravatar.cc/150?img=1"
   },
   {
     id: "user2",
-    name: "Jane Smith",
-    email: "jane@example.com",
-    role: UserRole.SUPERIOR,
+    name: "Registrar Office",
+    email: "registraroffice@chanakyauniversity.edu.in",
+    role: UserRole.ADMIN,
     avatar: "https://i.pravatar.cc/150?img=2"
   },
   {
     id: "user3",
-    name: "Alex Johnson",
-    email: "alex@example.com",
-    role: UserRole.ADMIN,
+    name: "Ruchiket",
+    email: "ruchiket@chanakyauniversity.edu.in",
+    role: UserRole.USER,
     avatar: "https://i.pravatar.cc/150?img=3"
   },
   {
     id: "user4",
-    name: "Sarah Williams",
-    email: "sarah@example.com",
-    role: UserRole.SUPERIOR,
+    name: "Shiva",
+    email: "shiva@chanakyauniversity.edu.in",
+    role: UserRole.USER,
     avatar: "https://i.pravatar.cc/150?img=4"
   },
   {
     id: "user5",
-    name: "Michael Brown",
-    email: "michael@example.com",
-    role: UserRole.APPROVER,
+    name: "Nandani",
+    email: "nandani@chanakyauniversity.edu.in",
+    role: UserRole.USER,
     avatar: "https://i.pravatar.cc/150?img=5"
   },
   {
     id: "user6",
-    name: "Emily Davis",
-    email: "emily@example.com",
-    role: UserRole.APPROVER,
+    name: "Samanvitha",
+    email: "samanvitha@chanakyauniversity.edu.in",
+    role: UserRole.USER,
     avatar: "https://i.pravatar.cc/150?img=6"
   },
   {
     id: "user7",
-    name: "Robert Miller",
-    email: "robert@example.com",
-    role: UserRole.REGISTRAR,
+    name: "Finance Office",
+    email: "financeoffice@chanakyauniversity.edu.in",
+    role: UserRole.APPROVER,
     avatar: "https://i.pravatar.cc/150?img=7"
+  },
+  {
+    id: "user8",
+    name: "Admin Office",
+    email: "adminoffice@chanakyauniversity.edu.in",
+    role: UserRole.APPROVER,
+    avatar: "https://i.pravatar.cc/150?img=8"
   }
 ];
 
@@ -73,13 +80,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users] = useState<User[]>(DEMO_USERS);
 
-  // Auto-login the first user for demo purposes
+  // Modified to check for a logged-in user, but not auto-login
   useEffect(() => {
     const savedUser = localStorage.getItem("currentUser");
     if (savedUser) {
       setCurrentUser(JSON.parse(savedUser));
-    } else {
-      login("user1");
     }
   }, []);
 
