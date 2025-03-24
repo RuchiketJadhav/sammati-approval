@@ -487,15 +487,17 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         
         // Update approval steps
         const approvalSteps = updatedProposal.approvalSteps || [];
-        approvalSteps.push({
+        // Fix: Explicitly set the status as "approved" literal type, not a generic string
+        const newStep: ApprovalStep = {
           userId: currentUser.id,
           userName: currentUser.name,
           userRole: currentUser.role,
-          status: "approved",
+          status: "approved", // Using the literal type "approved"
           timestamp: Date.now(),
           comment
-        });
-        updatedProposal.approvalSteps = approvalSteps;
+        };
+        
+        updatedProposal.approvalSteps = [...approvalSteps, newStep];
         
         // Final approval
         updatedProposal.status = ProposalStatus.APPROVED;
