@@ -3,6 +3,8 @@ export enum ProposalStatus {
   DRAFT = "DRAFT",
   PENDING_SUPERIOR = "PENDING_SUPERIOR",
   PENDING_ADMIN = "PENDING_ADMIN",
+  PENDING_APPROVERS = "PENDING_APPROVERS",
+  PENDING_REGISTRAR = "PENDING_REGISTRAR",
   APPROVED = "APPROVED",
   REJECTED = "REJECTED"
 }
@@ -10,7 +12,9 @@ export enum ProposalStatus {
 export enum UserRole {
   USER = "USER",
   SUPERIOR = "SUPERIOR",
-  ADMIN = "ADMIN"
+  ADMIN = "ADMIN",
+  APPROVER = "APPROVER",
+  REGISTRAR = "REGISTRAR"
 }
 
 export enum ProposalType {
@@ -38,6 +42,15 @@ export interface Comment {
   timestamp: number;
 }
 
+export interface ApprovalStep {
+  userId: string;
+  userName: string;
+  userRole: UserRole;
+  status: "pending" | "approved" | "rejected";
+  timestamp?: number;
+  comment?: string;
+}
+
 export interface Proposal {
   id: string;
   title: string;
@@ -61,6 +74,11 @@ export interface Proposal {
   timeline?: string;
   justification?: string;
   department?: string;
+  // Multi-approver workflow
+  approvers?: string[]; // List of user IDs who need to approve
+  approvalSteps?: ApprovalStep[]; // History of the approval process
+  pendingApprovers?: string[]; // List of user IDs who still need to approve
+  assignedToRegistrar?: boolean;
 }
 
 export type ProposalFormData = {

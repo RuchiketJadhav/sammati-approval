@@ -1,5 +1,6 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Proposal, ProposalStatus, Comment, ProposalFormData, ProposalType } from "../utils/types";
+import { Proposal, ProposalStatus, Comment, ProposalFormData, ProposalType, ApprovalStep, UserRole } from "../utils/types";
 import { useAuth } from "./AuthContext";
 import { toast } from "sonner";
 
@@ -15,6 +16,12 @@ interface ProposalContextType {
   rejectProposal: (id: string, reason: string) => void;
   resubmitProposal: (id: string) => void;
   addComment: (proposalId: string, text: string) => void;
+  assignApprovers: (proposalId: string, approverIds: string[]) => void;
+  approveAsApprover: (proposalId: string, comment?: string) => void;
+  assignToRegistrar: (proposalId: string) => void;
+  approveAsRegistrar: (proposalId: string, comment?: string) => void;
+  getApprovalProgress: (proposalId: string) => number;
+  getPendingApprovers: (proposalId: string) => string[];
 }
 
 const ProposalContext = createContext<ProposalContextType | undefined>(undefined);
@@ -145,7 +152,19 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
       
       // Include if pending admin and the user is admin
-      if (p.status === ProposalStatus.PENDING_ADMIN && user?.role === 'ADMIN') {
+      if (p.status === ProposalStatus.PENDING_ADMIN && user?.role === UserRole.ADMIN) {
+        return true;
+      }
+
+      // Include if user is one of the pending approvers
+      if (p.status === ProposalStatus.PENDING_APPROVERS && 
+          p.pendingApprovers?.includes(userId)) {
+        return true;
+      }
+
+      // Include if pending registrar and user is a registrar
+      if (p.status === ProposalStatus.PENDING_REGISTRAR && 
+          user?.role === UserRole.REGISTRAR) {
         return true;
       }
       
@@ -255,10 +274,25 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           updatedProposal.comments = [...proposal.comments, newComment];
         }
 
+        // Create or update approval steps
+        if (!updatedProposal.approvalSteps) {
+          updatedProposal.approvalSteps = [];
+        }
+
         // Update status based on approval flow
         if (proposal.status === ProposalStatus.PENDING_SUPERIOR) {
           updatedProposal.approvedBySuperior = true;
           updatedProposal.status = ProposalStatus.PENDING_ADMIN;
+          
+          // Add approval step
+          updatedProposal.approvalSteps.push({
+            userId: currentUser.id,
+            userName: currentUser.name,
+            userRole: currentUser.role,
+            status: "approved",
+            timestamp: Date.now(),
+            comment: comment
+          });
           
           // When a superior approves, assign to an admin
           const admins = getAdmins();
@@ -272,13 +306,221 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           toast.success("Proposal approved and forwarded to admin");
         } else if (proposal.status === ProposalStatus.PENDING_ADMIN) {
           updatedProposal.approvedByAdmin = true;
-          updatedProposal.status = ProposalStatus.APPROVED;
-          toast.success("Proposal fully approved");
+          updatedProposal.status = ProposalStatus.PENDING_APPROVERS;
+          
+          // Add approval step
+          updatedProposal.approvalSteps.push({
+            userId: currentUser.id,
+            userName: currentUser.name,
+            userRole: currentUser.role,
+            status: "approved",
+            timestamp: Date.now(),
+            comment: comment
+          });
+          
+          toast.success("Proposal approved. Please assign approvers.");
         }
         
         return updatedProposal;
       })
     );
+  };
+
+  const assignApprovers = (proposalId: string, approverIds: string[]) => {
+    if (!currentUser) throw new Error("You must be logged in to assign approvers");
+    if (currentUser.role !== UserRole.ADMIN) throw new Error("Only admins can assign approvers");
+    
+    setProposals(prev => 
+      prev.map(proposal => {
+        if (proposal.id !== proposalId) return proposal;
+        
+        if (proposal.status !== ProposalStatus.PENDING_APPROVERS) {
+          throw new Error("This proposal is not ready for approver assignment");
+        }
+        
+        // Create a list of approval steps for the new approvers
+        const approvalSteps = proposal.approvalSteps || [];
+        const newApprovalSteps = [...approvalSteps];
+        
+        approverIds.forEach(approverId => {
+          const approver = getUserById(approverId);
+          if (!approver) return;
+          
+          newApprovalSteps.push({
+            userId: approver.id,
+            userName: approver.name,
+            userRole: approver.role,
+            status: "pending"
+          });
+        });
+        
+        toast.success(`Assigned ${approverIds.length} approvers to the proposal`);
+        
+        return {
+          ...proposal,
+          approvers: approverIds,
+          pendingApprovers: approverIds,
+          approvalSteps: newApprovalSteps,
+          updatedAt: Date.now()
+        };
+      })
+    );
+  };
+  
+  const approveAsApprover = (proposalId: string, comment?: string) => {
+    if (!currentUser) throw new Error("You must be logged in to approve");
+    
+    setProposals(prev => 
+      prev.map(proposal => {
+        if (proposal.id !== proposalId) return proposal;
+        
+        if (proposal.status !== ProposalStatus.PENDING_APPROVERS) {
+          throw new Error("This proposal is not pending approver review");
+        }
+        
+        if (!proposal.pendingApprovers?.includes(currentUser.id)) {
+          throw new Error("You are not assigned as an approver for this proposal");
+        }
+        
+        // Create a copy
+        const updatedProposal = { ...proposal, updatedAt: Date.now() };
+        
+        // Add comment if provided
+        if (comment) {
+          const newComment: Comment = {
+            id: `comment${Date.now()}`,
+            proposalId,
+            userId: currentUser.id,
+            userName: currentUser.name,
+            userAvatar: currentUser.avatar,
+            text: comment,
+            timestamp: Date.now()
+          };
+          updatedProposal.comments = [...proposal.comments, newComment];
+        }
+        
+        // Update approval steps
+        const approvalSteps = updatedProposal.approvalSteps || [];
+        const updatedSteps = approvalSteps.map(step => {
+          if (step.userId === currentUser.id && step.status === "pending") {
+            return {
+              ...step,
+              status: "approved",
+              timestamp: Date.now(),
+              comment
+            };
+          }
+          return step;
+        });
+        updatedProposal.approvalSteps = updatedSteps;
+        
+        // Remove from pending approvers
+        const pendingApprovers = (updatedProposal.pendingApprovers || [])
+          .filter(id => id !== currentUser.id);
+        updatedProposal.pendingApprovers = pendingApprovers;
+        
+        // Check if all approvers have approved
+        if (pendingApprovers.length === 0) {
+          updatedProposal.status = ProposalStatus.PENDING_REGISTRAR;
+          toast.success("All approvers have approved. Proposal moved to Registrar.");
+        } else {
+          toast.success("Proposal approved. Waiting for other approvers.");
+        }
+        
+        return updatedProposal;
+      })
+    );
+  };
+  
+  const assignToRegistrar = (proposalId: string) => {
+    if (!currentUser) throw new Error("You must be logged in");
+    if (currentUser.role !== UserRole.ADMIN) throw new Error("Only admins can assign to registrar");
+    
+    setProposals(prev => 
+      prev.map(proposal => {
+        if (proposal.id !== proposalId) return proposal;
+        
+        if (proposal.status !== ProposalStatus.PENDING_APPROVERS) {
+          throw new Error("This proposal must be in approvers stage");
+        }
+        
+        return {
+          ...proposal,
+          status: ProposalStatus.PENDING_REGISTRAR,
+          assignedToRegistrar: true,
+          updatedAt: Date.now()
+        };
+      })
+    );
+    
+    toast.success("Proposal assigned to Registrar for final approval");
+  };
+  
+  const approveAsRegistrar = (proposalId: string, comment?: string) => {
+    if (!currentUser) throw new Error("You must be logged in");
+    if (currentUser.role !== UserRole.REGISTRAR) throw new Error("Only registrars can perform final approval");
+    
+    setProposals(prev => 
+      prev.map(proposal => {
+        if (proposal.id !== proposalId) return proposal;
+        
+        if (proposal.status !== ProposalStatus.PENDING_REGISTRAR) {
+          throw new Error("This proposal is not pending registrar approval");
+        }
+        
+        // Create a copy
+        const updatedProposal = { ...proposal, updatedAt: Date.now() };
+        
+        // Add comment if provided
+        if (comment) {
+          const newComment: Comment = {
+            id: `comment${Date.now()}`,
+            proposalId,
+            userId: currentUser.id,
+            userName: currentUser.name,
+            userAvatar: currentUser.avatar,
+            text: comment,
+            timestamp: Date.now()
+          };
+          updatedProposal.comments = [...proposal.comments, newComment];
+        }
+        
+        // Update approval steps
+        const approvalSteps = updatedProposal.approvalSteps || [];
+        approvalSteps.push({
+          userId: currentUser.id,
+          userName: currentUser.name,
+          userRole: currentUser.role,
+          status: "approved",
+          timestamp: Date.now(),
+          comment
+        });
+        updatedProposal.approvalSteps = approvalSteps;
+        
+        // Final approval
+        updatedProposal.status = ProposalStatus.APPROVED;
+        toast.success("Proposal has received final approval");
+        
+        return updatedProposal;
+      })
+    );
+  };
+  
+  const getApprovalProgress = (proposalId: string) => {
+    const proposal = getProposalById(proposalId);
+    if (!proposal || !proposal.approvalSteps) return 0;
+    
+    const totalSteps = proposal.approvalSteps.length;
+    const completedSteps = proposal.approvalSteps.filter(
+      step => step.status === "approved" || step.status === "rejected"
+    ).length;
+    
+    return totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+  };
+  
+  const getPendingApprovers = (proposalId: string) => {
+    const proposal = getProposalById(proposalId);
+    return proposal?.pendingApprovers || [];
   };
 
   const rejectProposal = (id: string, reason: string) => {
@@ -376,7 +618,13 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         approveProposal,
         rejectProposal,
         resubmitProposal,
-        addComment
+        addComment,
+        assignApprovers,
+        approveAsApprover,
+        assignToRegistrar,
+        approveAsRegistrar,
+        getApprovalProgress,
+        getPendingApprovers
       }}
     >
       {children}

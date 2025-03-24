@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,16 +36,38 @@ import {
   Calendar,
   DollarSign,
   Building,
-  FileText
+  FileText,
+  Users,
+  CheckSquare,
+  PlusCircle
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const ProposalDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getProposalById, approveProposal, rejectProposal, resubmitProposal } = useProposals();
-  const { currentUser } = useAuth();
+  const { 
+    getProposalById, 
+    approveProposal, 
+    rejectProposal, 
+    resubmitProposal, 
+    approveAsApprover,
+    assignApprovers,
+    assignToRegistrar,
+    approveAsRegistrar,
+    getApprovalProgress
+  } = useProposals();
+  const { currentUser, users } = useAuth();
   const [rejectionReason, setRejectionReason] = useState("");
   const [approvalComment, setApprovalComment] = useState("");
+  const [selectedApprovers, setSelectedApprovers] = useState<string[]>([]);
 
   if (!id) {
     navigate("/");
@@ -89,6 +113,8 @@ const ProposalDetails: React.FC = () => {
   const isCreator = currentUser.id === proposal.createdBy;
   const isAssignee = currentUser.id === proposal.assignedTo;
   const isAdmin = currentUser.role === UserRole.ADMIN;
+  const isRegistrar = currentUser.role === UserRole.REGISTRAR;
+  const isPendingApprover = proposal.pendingApprovers?.includes(currentUser.id);
   
   const canApprove = 
     (isAssignee && proposal.status === ProposalStatus.PENDING_SUPERIOR) || 
@@ -99,6 +125,18 @@ const ProposalDetails: React.FC = () => {
     (isAdmin && proposal.status === ProposalStatus.PENDING_ADMIN);
   
   const canResubmit = isCreator && proposal.status === ProposalStatus.REJECTED;
+  
+  const canAssignApprovers = isAdmin && proposal.status === ProposalStatus.PENDING_APPROVERS;
+  
+  const canApproveAsApprover = isPendingApprover && proposal.status === ProposalStatus.PENDING_APPROVERS;
+  
+  const canSendToRegistrar = isAdmin && 
+                            proposal.status === ProposalStatus.PENDING_APPROVERS && 
+                            proposal.pendingApprovers?.length === 0;
+  
+  const canApproveAsRegistrar = isRegistrar && proposal.status === ProposalStatus.PENDING_REGISTRAR;
+
+  const approvalProgress = getApprovalProgress(proposal.id);
 
   const getStatusBadge = (status: ProposalStatus) => {
     switch (status) {
@@ -121,6 +159,20 @@ const ProposalDetails: React.FC = () => {
           <Badge variant="outline" className="badge-warning">
             <Clock className="mr-1 h-3 w-3" />
             Pending Admin
+          </Badge>
+        );
+      case ProposalStatus.PENDING_APPROVERS:
+        return (
+          <Badge variant="outline" className="badge-info">
+            <Users className="mr-1 h-3 w-3" />
+            Pending Approvers
+          </Badge>
+        );
+      case ProposalStatus.PENDING_REGISTRAR:
+        return (
+          <Badge variant="outline" className="badge-warning">
+            <CheckSquare className="mr-1 h-3 w-3" />
+            Pending Registrar
           </Badge>
         );
       case ProposalStatus.APPROVED:
@@ -268,6 +320,145 @@ const ProposalDetails: React.FC = () => {
   const handleResubmit = () => {
     resubmitProposal(proposal.id);
   };
+  
+  const handleApproveAsApprover = () => {
+    approveAsApprover(proposal.id, approvalComment);
+    setApprovalComment("");
+  };
+  
+  const handleAssignApprovers = () => {
+    if (selectedApprovers.length === 0) {
+      alert("Please select at least one approver");
+      return;
+    }
+    assignApprovers(proposal.id, selectedApprovers);
+    setSelectedApprovers([]);
+  };
+  
+  const handleSendToRegistrar = () => {
+    assignToRegistrar(proposal.id);
+  };
+  
+  const handleApproveAsRegistrar = () => {
+    approveAsRegistrar(proposal.id, approvalComment);
+    setApprovalComment("");
+  };
+  
+  const toggleApprover = (userId: string) => {
+    if (selectedApprovers.includes(userId)) {
+      setSelectedApprovers(selectedApprovers.filter(id => id !== userId));
+    } else {
+      setSelectedApprovers([...selectedApprovers, userId]);
+    }
+  };
+
+  const renderApprovalSteps = () => {
+    if (!proposal.approvalSteps || proposal.approvalSteps.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="mb-6">
+        <h3 className="text-sm font-medium text-muted-foreground mb-2">Approval Process</h3>
+        
+        <div className="mb-4">
+          <Progress value={approvalProgress} className="h-2" />
+          <p className="text-xs text-muted-foreground mt-1">
+            {Math.round(approvalProgress)}% complete
+          </p>
+        </div>
+        
+        <div className="space-y-3">
+          {proposal.approvalSteps.map((step, index) => (
+            <div key={index} className="border border-border rounded-md p-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-medium">{step.userName}</p>
+                  <p className="text-sm text-muted-foreground capitalize">{step.userRole.toLowerCase()}</p>
+                </div>
+                <div>
+                  {step.status === "approved" ? (
+                    <Badge variant="outline" className="badge-success">
+                      <CheckCircle className="mr-1 h-3 w-3" />
+                      Approved
+                    </Badge>
+                  ) : step.status === "rejected" ? (
+                    <Badge variant="outline" className="badge-destructive">
+                      <XCircle className="mr-1 h-3 w-3" />
+                      Rejected
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="badge-pending">
+                      <Clock className="mr-1 h-3 w-3" />
+                      Pending
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              
+              {step.timestamp && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {format(step.timestamp, "MMM d, yyyy 'at' h:mm a")}
+                </p>
+              )}
+              
+              {step.comment && (
+                <p className="text-sm mt-2 bg-muted/20 p-2 rounded-md">
+                  "{step.comment}"
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+  
+  const renderApproverSelector = () => {
+    if (!canAssignApprovers) return null;
+    
+    const potentialApprovers = users.filter(user => 
+      user.role === UserRole.APPROVER || 
+      user.role === UserRole.SUPERIOR
+    );
+    
+    if (potentialApprovers.length === 0) {
+      return (
+        <div className="mt-4 p-4 bg-muted/20 rounded-md">
+          <p className="text-sm text-muted-foreground">
+            No users with approver permissions found.
+          </p>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="mt-4 border border-border p-4 rounded-md">
+        <h3 className="font-medium mb-3">Assign Approvers</h3>
+        <div className="space-y-3 mb-4">
+          {potentialApprovers.map(user => (
+            <div key={user.id} className="flex items-center space-x-2">
+              <Checkbox 
+                id={user.id}
+                checked={selectedApprovers.includes(user.id)}
+                onCheckedChange={() => toggleApprover(user.id)}
+              />
+              <label 
+                htmlFor={user.id}
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                {user.name} ({user.role})
+              </label>
+            </div>
+          ))}
+        </div>
+        <Button onClick={handleAssignApprovers} className="mt-2">
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Assign Selected Approvers
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <Layout>
@@ -321,6 +512,8 @@ const ProposalDetails: React.FC = () => {
                   </div>
                 </div>
 
+                {renderApprovalSteps()}
+
                 {proposal.status === ProposalStatus.REJECTED && proposal.rejectionReason && (
                   <div className="bg-destructive/5 border border-destructive/20 p-4 rounded-md mb-6">
                     <div className="flex items-center gap-2 mb-2">
@@ -330,6 +523,8 @@ const ProposalDetails: React.FC = () => {
                     <p className="text-destructive/80">{proposal.rejectionReason}</p>
                   </div>
                 )}
+
+                {renderApproverSelector()}
               </CardContent>
               <CardFooter className="pt-0 flex flex-wrap gap-3">
                 {canApprove && (
@@ -345,6 +540,43 @@ const ProposalDetails: React.FC = () => {
                       Approve
                     </Button>
                   </div>
+                )}
+                
+                {canApproveAsApprover && (
+                  <div className="w-full">
+                    <Textarea
+                      placeholder="Add a comment with your approval (optional)"
+                      value={approvalComment}
+                      onChange={(e) => setApprovalComment(e.target.value)}
+                      className="mb-3"
+                    />
+                    <Button onClick={handleApproveAsApprover}>
+                      <ThumbsUp className="mr-2 h-4 w-4" />
+                      Approve as Reviewer
+                    </Button>
+                  </div>
+                )}
+                
+                {canApproveAsRegistrar && (
+                  <div className="w-full">
+                    <Textarea
+                      placeholder="Add a comment with your final approval (optional)"
+                      value={approvalComment}
+                      onChange={(e) => setApprovalComment(e.target.value)}
+                      className="mb-3"
+                    />
+                    <Button onClick={handleApproveAsRegistrar}>
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Final Approval
+                    </Button>
+                  </div>
+                )}
+                
+                {canSendToRegistrar && (
+                  <Button onClick={handleSendToRegistrar} className="ml-auto">
+                    <CheckSquare className="mr-2 h-4 w-4" />
+                    Send to Registrar
+                  </Button>
                 )}
                 
                 {canReject && (
@@ -431,4 +663,3 @@ const ProposalDetails: React.FC = () => {
 };
 
 export default ProposalDetails;
-

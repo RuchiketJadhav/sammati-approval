@@ -31,6 +31,27 @@ const DEMO_USERS: User[] = [
     email: "sarah@example.com",
     role: UserRole.SUPERIOR,
     avatar: "https://i.pravatar.cc/150?img=4"
+  },
+  {
+    id: "user5",
+    name: "Michael Brown",
+    email: "michael@example.com",
+    role: UserRole.APPROVER,
+    avatar: "https://i.pravatar.cc/150?img=5"
+  },
+  {
+    id: "user6",
+    name: "Emily Davis",
+    email: "emily@example.com",
+    role: UserRole.APPROVER,
+    avatar: "https://i.pravatar.cc/150?img=6"
+  },
+  {
+    id: "user7",
+    name: "Robert Miller",
+    email: "robert@example.com",
+    role: UserRole.REGISTRAR,
+    avatar: "https://i.pravatar.cc/150?img=7"
   }
 ];
 
@@ -41,6 +62,8 @@ interface AuthContextType {
   logout: () => void;
   getSuperiors: () => User[];
   getAdmins: () => User[];
+  getApprovers: () => User[];
+  getRegistrars: () => User[];
   getUserById: (id: string) => User | undefined;
 }
 
@@ -80,6 +103,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const getAdmins = () => {
     return users.filter(user => user.role === UserRole.ADMIN);
   };
+  
+  const getApprovers = () => {
+    return users.filter(user => user.role === UserRole.APPROVER);
+  };
+  
+  const getRegistrars = () => {
+    return users.filter(user => user.role === UserRole.REGISTRAR);
+  };
 
   const getUserById = (id: string) => {
     return users.find(user => user.id === id);
@@ -94,6 +125,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         getSuperiors,
         getAdmins,
+        getApprovers,
+        getRegistrars,
         getUserById
       }}
     >
