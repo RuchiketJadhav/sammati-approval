@@ -405,7 +405,7 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (step.userId === currentUser.id && step.status === "pending") {
             return {
               ...step,
-              status: "approved",
+              status: "approved" as const, // Use a const assertion to ensure it's treated as a literal type
               timestamp: Date.now(),
               comment
             };
