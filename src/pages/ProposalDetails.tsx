@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -115,6 +116,9 @@ const ProposalDetails: React.FC = () => {
   const isAdmin = currentUser.role === UserRole.ADMIN;
   const isRegistrar = currentUser.role === UserRole.REGISTRAR;
   const isPendingApprover = proposal.pendingApprovers?.includes(currentUser.id);
+  
+  // Add a new variable to check if the user should see approval details
+  const canSeeApprovalDetails = isAdmin || isRegistrar;
   
   const canApprove = 
     (isAssignee && proposal.status === ProposalStatus.PENDING_SUPERIOR) || 
@@ -359,6 +363,11 @@ const ProposalDetails: React.FC = () => {
 
   const renderApprovalSteps = () => {
     if (!proposal.approvalSteps || proposal.approvalSteps.length === 0) {
+      return null;
+    }
+    
+    // Only render for admin and registrar
+    if (!canSeeApprovalDetails) {
       return null;
     }
 
