@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import ProposalCard from "@/components/ProposalCard";
@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProposals } from "@/contexts/ProposalContext";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, InboxIcon, PenTool } from "lucide-react";
+import { PlusCircle, InboxIcon, PenTool, ListFilter } from "lucide-react";
 import { UserRole, ProposalStatus } from "@/utils/types";
 import { motion } from "framer-motion";
 
@@ -30,8 +30,22 @@ const Dashboard = () => {
     );
   }
 
+  // Get proposals based on user role
   const myProposals = getUserProposals(currentUser.id);
   const assignedProposals = getAssignedProposals(currentUser.id);
+  
+  // For registrars, we need to show all proposals in the "all" tab
+  const allProposals = useMemo(() => {
+    if (currentUser.role === UserRole.REGISTRAR) {
+      // For registrar, show all proposals in the system
+      return proposals;
+    } else if (currentUser.role === UserRole.ADMIN) {
+      // Admin already sees all proposals
+      return proposals;
+    }
+    // For other users, they don't see this tab
+    return [];
+  }, [proposals, currentUser.role]);
 
   // Count pending admin approvals specifically for the badge
   const pendingAdminCount = currentUser.role === UserRole.ADMIN 
@@ -50,6 +64,8 @@ const Dashboard = () => {
           <p className="text-muted-foreground">
             {currentUser.role === UserRole.USER
               ? "Manage your proposals and track their status"
+              : currentUser.role === UserRole.REGISTRAR
+              ? "Review, approve, and manage all proposals in the system"
               : "Review and manage proposals assigned to you"}
           </p>
         </div>
@@ -83,12 +99,13 @@ const Dashboard = () => {
               </span>
             )}
           </TabsTrigger>
-          {currentUser.role === UserRole.ADMIN && (
+          {(currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.REGISTRAR) && (
             <TabsTrigger value="all" className="flex items-center">
+              <ListFilter className="mr-2 h-4 w-4" />
               <span>All Proposals</span>
-              {proposals.length > 0 && (
+              {allProposals.length > 0 && (
                 <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">
-                  {proposals.length}
+                  {allProposals.length}
                 </span>
               )}
             </TabsTrigger>
@@ -144,14 +161,14 @@ const Dashboard = () => {
         </TabsContent>
 
         <TabsContent value="all" className="mt-0">
-          {proposals.length > 0 ? (
+          {allProposals.length > 0 ? (
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             >
-              {proposals.map((proposal) => (
+              {allProposals.map((proposal) => (
                 <ProposalCard key={proposal.id} proposal={proposal} />
               ))}
             </motion.div>
