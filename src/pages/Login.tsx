@@ -46,9 +46,13 @@ const Login: React.FC = () => {
         return;
       }
       
-      // For demo purposes, we're checking if password matches user name
-      // In a real app, you'd hash and compare passwords properly
-      if (user.name !== values.password) {
+      // Check if password matches user name (case insensitive)
+      // This handles cases like "Registrar Office" vs "RegistrarOffice"
+      const passwordMatches = 
+        user.name.toLowerCase() === values.password.toLowerCase() ||
+        user.name.toLowerCase().replace(/\s+/g, '') === values.password.toLowerCase().replace(/\s+/g, '');
+      
+      if (!passwordMatches) {
         toast.error("Invalid email or password");
         return;
       }
