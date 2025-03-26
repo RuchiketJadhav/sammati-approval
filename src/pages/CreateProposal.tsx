@@ -13,7 +13,7 @@ const CreateProposal: React.FC = () => {
         <h1 className="text-3xl font-bold mb-6 text-center">
           {id ? "Edit Proposal" : "Create New Proposal"}
         </h1>
-        <ProposalForm />
+        <ProposalForm proposalId={id} />
       </div>
     </Layout>
   );

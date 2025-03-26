@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -33,7 +32,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-      <Route path="/proposal/new" element={<ProtectedRoute><CreateProposal /></ProtectedRoute>} />
+      <Route path="/create-proposal" element={<ProtectedRoute><CreateProposal /></ProtectedRoute>} />
       <Route path="/proposal/edit/:id" element={<ProtectedRoute><CreateProposal /></ProtectedRoute>} />
       <Route path="/proposal/:id" element={<ProtectedRoute><ProposalDetails /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

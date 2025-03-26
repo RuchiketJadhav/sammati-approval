@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -35,8 +35,11 @@ const formSchema = z.object({
 
 type ProposalFormValues = z.infer<typeof formSchema>;
 
-const ProposalForm: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+interface ProposalFormProps {
+  proposalId?: string;
+}
+
+const ProposalForm: React.FC<ProposalFormProps> = ({ proposalId }) => {
   const { createProposal, getProposalById, updateProposal } = useProposals();
   const { users, currentUser } = useAuth();
   const { getProposalTypeOptions, getCustomTypeById, getDefaultFieldsForType } = useProposalTypes();
@@ -46,8 +49,8 @@ const ProposalForm: React.FC = () => {
   const [selectedTypeFields, setSelectedTypeFields] = useState<any[]>([]);
   
   const otherUsers = users.filter(user => user.id !== currentUser?.id);
-  const isEditMode = Boolean(id);
-  const currentProposal = id ? getProposalById(id) : null;
+  const isEditMode = Boolean(proposalId);
+  const currentProposal = proposalId ? getProposalById(proposalId) : null;
   
   const canEdit = currentProposal ? 
     currentUser?.id === currentProposal.createdBy && 
