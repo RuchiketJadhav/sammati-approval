@@ -10,20 +10,22 @@ import { Shield } from "lucide-react";
 const ManageProposalTypes: React.FC = () => {
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.role === UserRole.ADMIN;
+  const isRegistrar = currentUser?.role === UserRole.REGISTRAR;
+  const hasAccess = isAdmin || isRegistrar;
 
   return (
     <Layout>
       <div className="container py-6">
         <h1 className="text-3xl font-bold mb-6">Sammati - Manage Proposal Types</h1>
         
-        {!isAdmin ? (
+        {!hasAccess ? (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-amber-600">
-                <Shield className="mr-2" /> Admin Access Required
+                <Shield className="mr-2" /> Admin or Registrar Access Required
               </CardTitle>
               <CardDescription>
-                You need administrator privileges to manage proposal types.
+                You need administrator or registrar privileges to manage proposal types.
               </CardDescription>
             </CardHeader>
           </Card>

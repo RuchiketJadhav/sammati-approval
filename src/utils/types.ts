@@ -114,6 +114,9 @@ export interface Proposal {
   approvalSteps?: ApprovalStep[]; // History of the approval process
   pendingApprovers?: string[]; // List of user IDs who still need to approve
   assignedToRegistrar?: boolean;
+  // When a proposal is resubmitted
+  resubmitted?: boolean;
+  resubmittedAt?: number;
 }
 
 export type ProposalFormData = {

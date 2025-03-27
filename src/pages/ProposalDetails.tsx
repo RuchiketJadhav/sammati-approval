@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -59,10 +60,13 @@ const ProposalDetails: React.FC = () => {
     rejectProposal, 
     resubmitProposal, 
     approveAsApprover,
+    rejectAsApprover,
     assignApprovers,
     assignToRegistrar,
     approveAsRegistrar,
-    getApprovalProgress
+    rejectAsRegistrar,
+    getApprovalProgress,
+    canResubmit
   } = useProposals();
   const { currentUser, users } = useAuth();
   const [rejectionReason, setRejectionReason] = useState("");
@@ -131,12 +135,14 @@ const ProposalDetails: React.FC = () => {
   const canAssignApprovers = isAdmin && proposal.status === ProposalStatus.PENDING_APPROVERS;
   
   const canApproveAsApprover = isPendingApprover && proposal.status === ProposalStatus.PENDING_APPROVERS;
+  const canRejectAsApprover = isPendingApprover && proposal.status === ProposalStatus.PENDING_APPROVERS;
   
   const canSendToRegistrar = isAdmin && 
                             proposal.status === ProposalStatus.PENDING_APPROVERS && 
                             proposal.pendingApprovers?.length === 0;
   
   const canApproveAsRegistrar = isRegistrar && proposal.status === ProposalStatus.PENDING_REGISTRAR;
+  const canRejectAsRegistrar = isRegistrar && proposal.status === ProposalStatus.PENDING_REGISTRAR;
 
   const canEdit = isCreator && 
                  (proposal.status === ProposalStatus.DRAFT || 
@@ -200,118 +206,58 @@ const ProposalDetails: React.FC = () => {
   };
 
   const renderProposalTypeDetails = () => {
-    switch(proposal.type) {
-      case ProposalType.BUDGET:
-        return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            {proposal.budget && (
-              <div className="bg-muted/30 p-3 rounded-md">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-medium text-muted-foreground">Budget</h3>
-                </div>
-                <p>{proposal.budget}</p>
-              </div>
-            )}
-            {proposal.timeline && (
-              <div className="bg-muted/30 p-3 rounded-md">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-medium text-muted-foreground">Timeline</h3>
-                </div>
-                <p>{proposal.timeline}</p>
-              </div>
-            )}
+    // Always show all available details regardless of type
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        {proposal.budget && (
+          <div className="bg-muted/30 p-3 rounded-md">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-medium text-muted-foreground">Budget</h3>
+            </div>
+            <p>{proposal.budget}</p>
           </div>
-        );
-      case ProposalType.EQUIPMENT:
-        return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            {proposal.budget && (
-              <div className="bg-muted/30 p-3 rounded-md">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-medium text-muted-foreground">Budget</h3>
-                </div>
-                <p>{proposal.budget}</p>
-              </div>
-            )}
-            {proposal.justification && (
-              <div className="bg-muted/30 p-3 rounded-md">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-medium text-muted-foreground">Justification</h3>
-                </div>
-                <p>{proposal.justification}</p>
-              </div>
-            )}
-            {proposal.timeline && (
-              <div className="bg-muted/30 p-3 rounded-md">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-medium text-muted-foreground">Timeline</h3>
-                </div>
-                <p>{proposal.timeline}</p>
-              </div>
-            )}
+        )}
+        {proposal.timeline && (
+          <div className="bg-muted/30 p-3 rounded-md">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-medium text-muted-foreground">Timeline</h3>
+            </div>
+            <p>{proposal.timeline}</p>
           </div>
-        );
-      case ProposalType.HIRING:
-        return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            {proposal.department && (
-              <div className="bg-muted/30 p-3 rounded-md">
-                <div className="flex items-center gap-2">
-                  <Building className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-medium text-muted-foreground">Department</h3>
-                </div>
-                <p>{proposal.department}</p>
-              </div>
-            )}
-            {proposal.justification && (
-              <div className="bg-muted/30 p-3 rounded-md">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-medium text-muted-foreground">Justification</h3>
-                </div>
-                <p>{proposal.justification}</p>
-              </div>
-            )}
-            {proposal.timeline && (
-              <div className="bg-muted/30 p-3 rounded-md">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-medium text-muted-foreground">Timeline</h3>
-                </div>
-                <p>{proposal.timeline}</p>
-              </div>
-            )}
+        )}
+        {proposal.justification && (
+          <div className="bg-muted/30 p-3 rounded-md">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-medium text-muted-foreground">Justification</h3>
+            </div>
+            <p>{proposal.justification}</p>
           </div>
-        );
-      case ProposalType.OTHER:
-        return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            {proposal.timeline && (
-              <div className="bg-muted/30 p-3 rounded-md">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-medium text-muted-foreground">Timeline</h3>
-                </div>
-                <p>{proposal.timeline}</p>
-              </div>
-            )}
-            {proposal.justification && (
-              <div className="bg-muted/30 p-3 rounded-md">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-medium text-muted-foreground">Justification</h3>
-                </div>
-                <p>{proposal.justification}</p>
-              </div>
-            )}
+        )}
+        {proposal.department && (
+          <div className="bg-muted/30 p-3 rounded-md">
+            <div className="flex items-center gap-2">
+              <Building className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-medium text-muted-foreground">Department</h3>
+            </div>
+            <p>{proposal.department}</p>
           </div>
-        );
-    }
+        )}
+        {proposal.fieldValues && Object.keys(proposal.fieldValues).length > 0 && (
+          Object.entries(proposal.fieldValues).map(([key, value]) => (
+            <div key={key} className="bg-muted/30 p-3 rounded-md">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-medium text-muted-foreground">{key}</h3>
+              </div>
+              <p>{value?.toString()}</p>
+            </div>
+          ))
+        )}
+      </div>
+    );
   };
 
   const handleApprove = () => {
@@ -333,6 +279,11 @@ const ProposalDetails: React.FC = () => {
     setApprovalComment("");
   };
   
+  const handleRejectAsApprover = () => {
+    rejectAsApprover(proposal.id, rejectionReason);
+    setRejectionReason("");
+  };
+  
   const handleAssignApprovers = () => {
     if (selectedApprovers.length === 0) {
       alert("Please select at least one approver");
@@ -349,6 +300,11 @@ const ProposalDetails: React.FC = () => {
   const handleApproveAsRegistrar = () => {
     approveAsRegistrar(proposal.id, approvalComment);
     setApprovalComment("");
+  };
+  
+  const handleRejectAsRegistrar = () => {
+    rejectAsRegistrar(proposal.id, rejectionReason);
+    setRejectionReason("");
   };
   
   const toggleApprover = (userId: string) => {
@@ -455,7 +411,7 @@ const ProposalDetails: React.FC = () => {
                 htmlFor={user.id}
                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
               >
-                {user.name} ({user.role})
+                {user.name}
               </label>
             </div>
           ))}
@@ -576,6 +532,43 @@ const ProposalDetails: React.FC = () => {
                   </div>
                 )}
                 
+                {canRejectAsApprover && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="text-destructive">
+                        <ThumbsDown className="mr-2 h-4 w-4" />
+                        Reject as Reviewer
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reject Proposal</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Please provide a reason for rejection.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="py-2">
+                        <Textarea
+                          placeholder="Reason for rejection"
+                          value={rejectionReason}
+                          onChange={(e) => setRejectionReason(e.target.value)}
+                          className="min-h-[100px]"
+                        />
+                      </div>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={handleRejectAsApprover} 
+                          disabled={!rejectionReason.trim()}
+                          className="bg-destructive text-destructive-foreground"
+                        >
+                          Submit Rejection
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+                
                 {canApproveAsRegistrar && (
                   <div className="w-full">
                     <Textarea
@@ -589,6 +582,43 @@ const ProposalDetails: React.FC = () => {
                       Final Approval
                     </Button>
                   </div>
+                )}
+                
+                {canRejectAsRegistrar && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="text-destructive">
+                        <ThumbsDown className="mr-2 h-4 w-4" />
+                        Reject as Registrar
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reject Proposal</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Please provide a reason for rejection.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="py-2">
+                        <Textarea
+                          placeholder="Reason for rejection"
+                          value={rejectionReason}
+                          onChange={(e) => setRejectionReason(e.target.value)}
+                          className="min-h-[100px]"
+                        />
+                      </div>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={handleRejectAsRegistrar} 
+                          disabled={!rejectionReason.trim()}
+                          className="bg-destructive text-destructive-foreground"
+                        >
+                          Submit Rejection
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
                 
                 {canSendToRegistrar && (

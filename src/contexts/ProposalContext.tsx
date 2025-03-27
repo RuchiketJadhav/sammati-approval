@@ -17,10 +17,13 @@ interface ProposalContextType {
   addComment: (proposalId: string, text: string) => void;
   assignApprovers: (proposalId: string, approverIds: string[]) => void;
   approveAsApprover: (proposalId: string, comment?: string) => void;
+  rejectAsApprover: (proposalId: string, reason: string) => void;
   assignToRegistrar: (proposalId: string) => void;
   approveAsRegistrar: (proposalId: string, comment?: string) => void;
+  rejectAsRegistrar: (proposalId: string, reason: string) => void;
   getApprovalProgress: (proposalId: string) => number;
   getPendingApprovers: (proposalId: string) => string[];
+  canResubmit: (proposal: Proposal, userId: string) => boolean;
 }
 
 const ProposalContext = createContext<ProposalContextType | undefined>(undefined);
@@ -590,6 +593,96 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     toast.success("Comment added");
   };
 
+  const canResubmit = (proposal: Proposal, userId: string) => {
+    // Only the creator can resubmit, and only rejected proposals can be resubmitted
+    return proposal.createdBy === userId && proposal.status === ProposalStatus.REJECTED;
+  };
+
+  const rejectAsApprover = (proposalId: string, reason: string) => {
+    if (!currentUser) throw new Error("You must be logged in to reject a proposal");
+    
+    setProposals(prev => 
+      prev.map(proposal => {
+        if (proposal.id !== proposalId) return proposal;
+        
+        if (proposal.status !== ProposalStatus.PENDING_APPROVERS) {
+          throw new Error("This proposal is not pending approver review");
+        }
+        
+        if (!proposal.pendingApprovers?.includes(currentUser.id)) {
+          throw new Error("You are not assigned as an approver for this proposal");
+        }
+        
+        // Create a copy
+        const updatedProposal = { ...proposal, updatedAt: Date.now() };
+        
+        // Update approval steps
+        const approvalSteps = updatedProposal.approvalSteps || [];
+        const updatedSteps = approvalSteps.map(step => {
+          if (step.userId === currentUser.id && step.status === "pending") {
+            return {
+              ...step,
+              status: "rejected" as const,
+              timestamp: Date.now(),
+              comment: reason
+            };
+          }
+          return step;
+        });
+        updatedProposal.approvalSteps = updatedSteps;
+        
+        // Update status to rejected
+        updatedProposal.status = ProposalStatus.REJECTED;
+        updatedProposal.rejectedBy = currentUser.id;
+        updatedProposal.rejectedByName = currentUser.name;
+        updatedProposal.rejectionReason = reason;
+        
+        toast.error("Proposal rejected");
+        return updatedProposal;
+      })
+    );
+  };
+
+  const rejectAsRegistrar = (proposalId: string, reason: string) => {
+    if (!currentUser) throw new Error("You must be logged in");
+    if (currentUser.role !== UserRole.REGISTRAR) throw new Error("Only registrars can reject at this stage");
+    
+    setProposals(prev => 
+      prev.map(proposal => {
+        if (proposal.id !== proposalId) return proposal;
+        
+        if (proposal.status !== ProposalStatus.PENDING_REGISTRAR) {
+          throw new Error("This proposal is not pending registrar review");
+        }
+        
+        // Create a copy
+        const updatedProposal = { ...proposal, updatedAt: Date.now() };
+        
+        // Update approval steps
+        const approvalSteps = updatedProposal.approvalSteps || [];
+        const newStep: ApprovalStep = {
+          userId: currentUser.id,
+          userName: currentUser.name,
+          userRole: currentUser.role,
+          status: "rejected", 
+          timestamp: Date.now(),
+          comment: reason
+        };
+        
+        updatedProposal.approvalSteps = [...approvalSteps, newStep];
+        
+        // Update rejection details
+        updatedProposal.status = ProposalStatus.REJECTED;
+        updatedProposal.rejectedBy = currentUser.id;
+        updatedProposal.rejectedByName = currentUser.name;
+        updatedProposal.rejectionReason = reason;
+        
+        toast.error("Proposal rejected by Registrar");
+        return updatedProposal;
+      })
+    );
+  };
+
   return (
     <ProposalContext.Provider
       value={{
@@ -606,10 +699,13 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addComment,
         assignApprovers,
         approveAsApprover,
+        rejectAsApprover,
         assignToRegistrar,
         approveAsRegistrar,
+        rejectAsRegistrar,
         getApprovalProgress,
-        getPendingApprovers
+        getPendingApprovers,
+        canResubmit
       }}
     >
       {children}
