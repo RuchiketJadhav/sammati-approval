@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Proposal, ProposalStatus, Comment, ProposalFormData, ProposalType, ApprovalStep, UserRole } from "../utils/types";
 import { useAuth } from "./AuthContext";
@@ -293,6 +292,8 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         } else if (proposal.status === ProposalStatus.PENDING_ADMIN) {
           updatedProposal.approvedByAdmin = true;
           updatedProposal.status = ProposalStatus.PENDING_APPROVERS;
+          updatedProposal.approversAssigned = false; // Reset approver assignment status
+          updatedProposal.needsReassignment = false; // Reset reassignment flag
           
           toast.success("Proposal approved. Please assign approvers.");
         }
@@ -312,6 +313,11 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         
         if (proposal.status !== ProposalStatus.PENDING_APPROVERS) {
           throw new Error("This proposal is not ready for approver assignment");
+        }
+        
+        // Check if reassignment is needed but not being done
+        if (proposal.needsReassignment === true && approverIds.length === 0) {
+          throw new Error("This proposal needs to have approvers reassigned after revision");
         }
         
         const approvalSteps = proposal.approvalSteps || [];
@@ -342,7 +348,9 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           approvers: approverIds,
           pendingApprovers: approverIds,
           approvalSteps: filteredApprovalSteps,
-          updatedAt: Date.now()
+          updatedAt: Date.now(),
+          approversAssigned: true, // Mark approvers as assigned
+          needsReassignment: false // Reset the reassignment flag
         };
       })
     );
@@ -494,6 +502,7 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         
         updatedProposal.status = ProposalStatus.NEEDS_REVISION;
         updatedProposal.rejectionReason = reason;
+        updatedProposal.needsReassignment = true; // Mark that reassignment is needed after revision
         
         const newComment: Comment = {
           id: `comment${Date.now()}`,
@@ -642,6 +651,8 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           approvedByAdmin: false,
           resubmitted: true,
           resubmittedAt: Date.now(),
+          approversAssigned: false, // Reset approver assignment status
+          needsReassignment: false, // Reset reassignment flag
           updatedAt: Date.now()
         };
       })
@@ -703,6 +714,7 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           ...proposal,
           status: ProposalStatus.NEEDS_REVISION,
           rejectionReason: reason,
+          needsReassignment: true, // Mark that reassignment is needed after revision
           comments: [...proposal.comments, newComment],
           updatedAt: Date.now()
         };
@@ -776,6 +788,7 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         
         updatedProposal.status = ProposalStatus.NEEDS_REVISION;
         updatedProposal.rejectionReason = reason;
+        updatedProposal.needsReassignment = true; // Mark that reassignment is needed after revision
         
         const newComment: Comment = {
           id: `comment${Date.now()}`,

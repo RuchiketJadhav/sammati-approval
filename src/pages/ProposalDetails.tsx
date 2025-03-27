@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -72,6 +71,7 @@ const ProposalDetails: React.FC = () => {
     rejectAsRegistrar,
     requestRevisionAsRegistrar,
     getApprovalProgress,
+    getPendingApprovers,
     canResubmit: checkCanResubmit,
     hasAllApproversResponded
   } = useProposals();
@@ -145,11 +145,9 @@ const ProposalDetails: React.FC = () => {
   
   const canResubmit = checkCanResubmit(proposal, currentUser.id);
   
-  // Admin can only assign approvers if the proposal is in PENDING_APPROVERS status
-  // and there are no approvers assigned yet, or if it's in NEEDS_REVISION and coming back around
   const canAssignApprovers = isAdmin && 
-    (proposal.status === ProposalStatus.PENDING_APPROVERS && 
-     (!proposal.approvers || proposal.approvers.length === 0));
+    proposal.status === ProposalStatus.PENDING_APPROVERS && 
+    (!proposal.approversAssigned || proposal.needsReassignment);
   
   const canApproveAsApprover = isPendingApprover && proposal.status === ProposalStatus.PENDING_APPROVERS;
   const canRejectAsApprover = isPendingApprover && proposal.status === ProposalStatus.PENDING_APPROVERS;
@@ -157,6 +155,7 @@ const ProposalDetails: React.FC = () => {
   
   const canSendToRegistrar = isAdmin && 
                             proposal.status === ProposalStatus.PENDING_APPROVERS && 
+                            proposal.approversAssigned && 
                             hasAllApproversResponded(proposal.id);
   
   const canApproveAsRegistrar = isRegistrar && proposal.status === ProposalStatus.PENDING_REGISTRAR;
@@ -446,7 +445,11 @@ const ProposalDetails: React.FC = () => {
     
     return (
       <div className="mt-4 border border-border p-4 rounded-md">
-        <h3 className="font-medium mb-3">Assign Approvers</h3>
+        <h3 className="font-medium mb-3">
+          {proposal.needsReassignment 
+            ? "Reassign Approvers (Required after revision)" 
+            : "Assign Approvers"}
+        </h3>
         
         <div className="relative mb-4">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -484,7 +487,7 @@ const ProposalDetails: React.FC = () => {
         
         <Button onClick={handleAssignApprovers} className="mt-2">
           <PlusCircle className="mr-2 h-4 w-4" />
-          Assign Selected Approvers
+          {proposal.needsReassignment ? "Reassign Selected Approvers" : "Assign Selected Approvers"}
         </Button>
       </div>
     );
@@ -568,11 +571,11 @@ const ProposalDetails: React.FC = () => {
 
                 {renderApproverSelector()}
                 
-                {proposal.approvers && proposal.approvers.length > 0 && proposal.status === ProposalStatus.PENDING_APPROVERS && isAdmin && (
+                {isAdmin && proposal.status === ProposalStatus.PENDING_APPROVERS && proposal.approversAssigned && !proposal.needsReassignment && (
                   <div className="mt-4 border border-border p-4 rounded-md">
                     <h3 className="font-medium mb-3">Assigned Approvers</h3>
                     <div className="space-y-2">
-                      {proposal.approvers.map(approverId => {
+                      {proposal.approvers?.map(approverId => {
                         const approver = users.find(user => user.id === approverId);
                         return approver ? (
                           <div key={approver.id} className="flex items-center space-x-2">
@@ -604,6 +607,15 @@ const ProposalDetails: React.FC = () => {
                         ) : null;
                       })}
                     </div>
+
+                    {proposal.needsReassignment && (
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <p className="text-sm text-muted-foreground">
+                          <AlertTriangle className="inline h-4 w-4 mr-1 text-amber-500" />
+                          This proposal requires approver reassignment after revision.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

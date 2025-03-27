@@ -110,6 +110,8 @@ export interface Proposal {
   assignedToRegistrar?: boolean;
   resubmitted?: boolean;
   resubmittedAt?: number;
+  approversAssigned?: boolean;
+  needsReassignment?: boolean;
 }
 
 export type ProposalFormData = {
