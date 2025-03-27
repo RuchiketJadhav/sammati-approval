@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -66,7 +65,7 @@ const ProposalDetails: React.FC = () => {
     approveAsRegistrar,
     rejectAsRegistrar,
     getApprovalProgress,
-    canResubmit
+    canResubmit: checkCanResubmit
   } = useProposals();
   const { currentUser, users } = useAuth();
   const [rejectionReason, setRejectionReason] = useState("");
@@ -206,7 +205,6 @@ const ProposalDetails: React.FC = () => {
   };
 
   const renderProposalTypeDetails = () => {
-    // Always show all available details regardless of type
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         {proposal.budget && (
