@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Proposal, ProposalStatus, Comment, ProposalFormData, ProposalType, ApprovalStep, UserRole } from "../utils/types";
 import { useAuth } from "./AuthContext";
@@ -316,11 +317,17 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const approvalSteps = proposal.approvalSteps || [];
         const newApprovalSteps = [...approvalSteps];
         
+        // Filter out any previous approver steps if we're reassigning after a revision
+        const filteredApprovalSteps = newApprovalSteps.filter(step => 
+          !approverIds.includes(step.userId) || 
+          (step.userRole !== UserRole.APPROVER && step.userRole !== UserRole.SUPERIOR)
+        );
+        
         approverIds.forEach(approverId => {
           const approver = getUserById(approverId);
           if (!approver) return;
           
-          newApprovalSteps.push({
+          filteredApprovalSteps.push({
             userId: approver.id,
             userName: approver.name,
             userRole: approver.role,
@@ -334,7 +341,7 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           ...proposal,
           approvers: approverIds,
           pendingApprovers: approverIds,
-          approvalSteps: newApprovalSteps,
+          approvalSteps: filteredApprovalSteps,
           updatedAt: Date.now()
         };
       })
@@ -376,9 +383,11 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           .filter(id => id !== currentUser.id);
         updatedProposal.pendingApprovers = pendingApprovers;
         
-        const hasAllResponded = hasAllApproversResponded(proposal.id);
+        // Only move to PENDING_REGISTRAR when ALL approvers have responded
+        // (either approved or rejected)
+        const allResponded = hasAllApproversResponded(proposal.id);
         
-        if (pendingApprovers.length === 0 || hasAllResponded) {
+        if (pendingApprovers.length === 0 || allResponded) {
           updatedProposal.status = ProposalStatus.PENDING_REGISTRAR;
           toast.success("All approvers have responded. Proposal moved to Registrar.");
         } else {
@@ -407,6 +416,18 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         
         const updatedProposal = { ...proposal, updatedAt: Date.now() };
         
+        // Add a comment for the rejection
+        const newComment: Comment = {
+          id: `comment${Date.now()}`,
+          proposalId,
+          userId: currentUser.id,
+          userName: currentUser.name,
+          userAvatar: currentUser.avatar,
+          text: `Rejected: ${reason}`,
+          timestamp: Date.now()
+        };
+        updatedProposal.comments = [...proposal.comments, newComment];
+        
         const approvalSteps = updatedProposal.approvalSteps || [];
         const updatedSteps = approvalSteps.map(step => {
           if (step.userId === currentUser.id && step.status === "pending") {
@@ -425,14 +446,16 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           .filter(id => id !== currentUser.id);
         updatedProposal.pendingApprovers = pendingApprovers;
         
-        if (pendingApprovers.length === 0 || hasAllApproversResponded(proposal.id)) {
+        // Even if an approver rejects, we wait for all approvers to respond
+        const allResponded = hasAllApproversResponded(proposal.id);
+        
+        if (pendingApprovers.length === 0 || allResponded) {
           updatedProposal.status = ProposalStatus.PENDING_REGISTRAR;
-          toast.success("All approvers have responded. Proposal moved to Registrar.");
+          toast.success("All approvers have responded. Proposal moved to Registrar despite rejection.");
         } else {
-          toast.success("Your rejection has been recorded. Waiting for other approvers.");
+          toast.info("Your rejection has been recorded. Waiting for other approvers to respond.");
         }
         
-        toast.error("You've rejected this proposal");
         return updatedProposal;
       })
     );
@@ -500,6 +523,12 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         
         if (proposal.status !== ProposalStatus.PENDING_APPROVERS) {
           throw new Error("This proposal must be in approvers stage");
+        }
+        
+        // Check if all approvers have responded
+        const allApproversResponded = hasAllApproversResponded(proposalId);
+        if (!allApproversResponded) {
+          throw new Error("All approvers must respond before sending to registrar");
         }
         
         return {
@@ -770,16 +799,23 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const proposal = getProposalById(proposalId);
     if (!proposal || !proposal.approvers || !proposal.approvalSteps) return false;
     
-    const respondedApprovers = new Set();
+    const approverResponseStatus = new Map<string, boolean>();
     
+    // Mark each approver as having responded or not
+    proposal.approvers.forEach(approverId => {
+      approverResponseStatus.set(approverId, false);
+    });
+    
+    // Update response status based on approval steps
     proposal.approvalSteps.forEach(step => {
       if (proposal.approvers?.includes(step.userId) && 
-          (step.status === "approved" || step.status === "rejected")) {
-        respondedApprovers.add(step.userId);
+          (step.status === "approved" || step.status === "rejected" || step.status === "resubmit")) {
+        approverResponseStatus.set(step.userId, true);
       }
     });
     
-    return respondedApprovers.size === proposal.approvers.length;
+    // Check if all approvers have responded
+    return Array.from(approverResponseStatus.values()).every(hasResponded => hasResponded);
   };
 
   return (

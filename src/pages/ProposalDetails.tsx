@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -12,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,7 +42,8 @@ import {
   CheckSquare,
   PlusCircle,
   Edit,
-  RotateCcw
+  RotateCcw,
+  Search
 } from "lucide-react";
 import {
   Select,
@@ -77,6 +80,7 @@ const ProposalDetails: React.FC = () => {
   const [revisionReason, setRevisionReason] = useState("");
   const [approvalComment, setApprovalComment] = useState("");
   const [selectedApprovers, setSelectedApprovers] = useState<string[]>([]);
+  const [approverSearchQuery, setApproverSearchQuery] = useState("");
 
   if (!id) {
     navigate("/");
@@ -141,7 +145,11 @@ const ProposalDetails: React.FC = () => {
   
   const canResubmit = checkCanResubmit(proposal, currentUser.id);
   
-  const canAssignApprovers = isAdmin && proposal.status === ProposalStatus.PENDING_APPROVERS;
+  // Admin can only assign approvers if the proposal is in PENDING_APPROVERS status
+  // and there are no approvers assigned yet, or if it's in NEEDS_REVISION and coming back around
+  const canAssignApprovers = isAdmin && 
+    (proposal.status === ProposalStatus.PENDING_APPROVERS && 
+     (!proposal.approvers || proposal.approvers.length === 0));
   
   const canApproveAsApprover = isPendingApprover && proposal.status === ProposalStatus.PENDING_APPROVERS;
   const canRejectAsApprover = isPendingApprover && proposal.status === ProposalStatus.PENDING_APPROVERS;
@@ -418,9 +426,15 @@ const ProposalDetails: React.FC = () => {
   const renderApproverSelector = () => {
     if (!canAssignApprovers) return null;
     
-    const potentialApprovers = users;
+    const potentialApprovers = users.filter(user => {
+      // Filter based on search query
+      if (approverSearchQuery) {
+        return user.name.toLowerCase().includes(approverSearchQuery.toLowerCase());
+      }
+      return true;
+    });
     
-    if (potentialApprovers.length === 0) {
+    if (potentialApprovers.length === 0 && !approverSearchQuery) {
       return (
         <div className="mt-4 p-4 bg-muted/20 rounded-md">
           <p className="text-sm text-muted-foreground">
@@ -433,23 +447,41 @@ const ProposalDetails: React.FC = () => {
     return (
       <div className="mt-4 border border-border p-4 rounded-md">
         <h3 className="font-medium mb-3">Assign Approvers</h3>
-        <div className="space-y-3 mb-4">
-          {potentialApprovers.map(user => (
-            <div key={user.id} className="flex items-center space-x-2">
-              <Checkbox 
-                id={user.id}
-                checked={selectedApprovers.includes(user.id)}
-                onCheckedChange={() => toggleApprover(user.id)}
-              />
-              <label 
-                htmlFor={user.id}
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                {user.name}
-              </label>
-            </div>
-          ))}
+        
+        <div className="relative mb-4">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search approvers..."
+            value={approverSearchQuery}
+            onChange={(e) => setApproverSearchQuery(e.target.value)}
+            className="pl-8"
+          />
         </div>
+        
+        {potentialApprovers.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2">
+            No users match your search criteria.
+          </p>
+        ) : (
+          <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+            {potentialApprovers.map(user => (
+              <div key={user.id} className="flex items-center space-x-2">
+                <Checkbox 
+                  id={user.id}
+                  checked={selectedApprovers.includes(user.id)}
+                  onCheckedChange={() => toggleApprover(user.id)}
+                />
+                <label 
+                  htmlFor={user.id}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {user.name}
+                </label>
+              </div>
+            ))}
+          </div>
+        )}
+        
         <Button onClick={handleAssignApprovers} className="mt-2">
           <PlusCircle className="mr-2 h-4 w-4" />
           Assign Selected Approvers
@@ -535,6 +567,45 @@ const ProposalDetails: React.FC = () => {
                 )}
 
                 {renderApproverSelector()}
+                
+                {proposal.approvers && proposal.approvers.length > 0 && proposal.status === ProposalStatus.PENDING_APPROVERS && isAdmin && (
+                  <div className="mt-4 border border-border p-4 rounded-md">
+                    <h3 className="font-medium mb-3">Assigned Approvers</h3>
+                    <div className="space-y-2">
+                      {proposal.approvers.map(approverId => {
+                        const approver = users.find(user => user.id === approverId);
+                        return approver ? (
+                          <div key={approver.id} className="flex items-center space-x-2">
+                            <div className="w-4 h-4 rounded-full bg-muted flex items-center justify-center">
+                              <Users className="h-3 w-3" />
+                            </div>
+                            <span className="text-sm">{approver.name}</span>
+                            
+                            {proposal.approvalSteps?.some(step => 
+                              step.userId === approver.id && 
+                              (step.status === "approved" || step.status === "rejected" || step.status === "resubmit")
+                            ) && (
+                              <Badge variant="outline" className={
+                                proposal.approvalSteps?.find(step => step.userId === approver.id)?.status === "approved" 
+                                  ? "badge-success" 
+                                  : proposal.approvalSteps?.find(step => step.userId === approver.id)?.status === "rejected"
+                                    ? "badge-destructive"
+                                    : "bg-amber-500 text-white"
+                              }>
+                                {proposal.approvalSteps?.find(step => step.userId === approver.id)?.status === "approved" 
+                                  ? "Approved" 
+                                  : proposal.approvalSteps?.find(step => step.userId === approver.id)?.status === "rejected"
+                                    ? "Rejected"
+                                    : "Requested Revision"
+                                }
+                              </Badge>
+                            )}
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                )}
               </CardContent>
               <CardFooter className="pt-0 flex flex-wrap gap-3">
                 {canEdit && (
@@ -559,7 +630,7 @@ const ProposalDetails: React.FC = () => {
                       onChange={(e) => setApprovalComment(e.target.value)}
                       className="mb-3"
                     />
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <Button onClick={handleApprove}>
                         <ThumbsUp className="mr-2 h-4 w-4" />
                         Approve
