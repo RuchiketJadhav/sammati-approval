@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Proposal, ProposalStatus, Comment, ProposalFormData, ProposalType, ApprovalStep, UserRole } from "../utils/types";
 import { useAuth } from "./AuthContext";
@@ -392,19 +391,8 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // Create a copy
         const updatedProposal = { ...proposal, updatedAt: Date.now() };
         
-        // Add comment if provided
-        if (comment) {
-          const newComment: Comment = {
-            id: `comment${Date.now()}`,
-            proposalId,
-            userId: currentUser.id,
-            userName: currentUser.name,
-            userAvatar: currentUser.avatar,
-            text: comment,
-            timestamp: Date.now()
-          };
-          updatedProposal.comments = [...proposal.comments, newComment];
-        }
+        // Add comment to approval steps but NOT to the general comments
+        // This keeps approver feedback visible only to admins and registrars
         
         // Update approval steps
         const approvalSteps = updatedProposal.approvalSteps || [];
@@ -412,7 +400,7 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (step.userId === currentUser.id && step.status === "pending") {
             return {
               ...step,
-              status: "approved" as const, // Use a const assertion to ensure it's treated as a literal type
+              status: "approved" as const,
               timestamp: Date.now(),
               comment
             };
@@ -478,19 +466,7 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // Create a copy
         const updatedProposal = { ...proposal, updatedAt: Date.now() };
         
-        // Add comment if provided
-        if (comment) {
-          const newComment: Comment = {
-            id: `comment${Date.now()}`,
-            proposalId,
-            userId: currentUser.id,
-            userName: currentUser.name,
-            userAvatar: currentUser.avatar,
-            text: comment,
-            timestamp: Date.now()
-          };
-          updatedProposal.comments = [...proposal.comments, newComment];
-        }
+        // Add comment to approval steps but NOT to general comments
         
         // Update approval steps
         const approvalSteps = updatedProposal.approvalSteps || [];

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -117,7 +116,6 @@ const ProposalDetails: React.FC = () => {
   const isRegistrar = currentUser.role === UserRole.REGISTRAR;
   const isPendingApprover = proposal.pendingApprovers?.includes(currentUser.id);
   
-  // Add a new variable to check if the user should see approval details
   const canSeeApprovalDetails = isAdmin || isRegistrar;
   
   const canApprove = 
@@ -366,7 +364,6 @@ const ProposalDetails: React.FC = () => {
       return null;
     }
     
-    // Only render for admin and registrar
     if (!canSeeApprovalDetails) {
       return null;
     }
@@ -431,16 +428,13 @@ const ProposalDetails: React.FC = () => {
   const renderApproverSelector = () => {
     if (!canAssignApprovers) return null;
     
-    const potentialApprovers = users.filter(user => 
-      user.role === UserRole.APPROVER || 
-      user.role === UserRole.SUPERIOR
-    );
+    const potentialApprovers = users;
     
     if (potentialApprovers.length === 0) {
       return (
         <div className="mt-4 p-4 bg-muted/20 rounded-md">
           <p className="text-sm text-muted-foreground">
-            No users with approver permissions found.
+            No users found.
           </p>
         </div>
       );
