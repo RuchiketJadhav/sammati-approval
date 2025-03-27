@@ -1,4 +1,3 @@
-
 export enum ProposalStatus {
   DRAFT = "DRAFT",
   PENDING_SUPERIOR = "PENDING_SUPERIOR",
@@ -6,7 +5,8 @@ export enum ProposalStatus {
   PENDING_APPROVERS = "PENDING_APPROVERS",
   PENDING_REGISTRAR = "PENDING_REGISTRAR",
   APPROVED = "APPROVED",
-  REJECTED = "REJECTED"
+  REJECTED = "REJECTED",
+  NEEDS_REVISION = "NEEDS_REVISION"
 }
 
 export enum UserRole {
@@ -17,7 +17,6 @@ export enum UserRole {
   REGISTRAR = "REGISTRAR"
 }
 
-// Base ProposalType enum for backward compatibility
 export enum ProposalType {
   BUDGET = "BUDGET",
   EQUIPMENT = "EQUIPMENT",
@@ -25,7 +24,6 @@ export enum ProposalType {
   OTHER = "OTHER"
 }
 
-// New interface for custom proposal types
 export interface CustomProposalType {
   id: string;
   name: string;
@@ -77,7 +75,7 @@ export interface ApprovalStep {
   userId: string;
   userName: string;
   userRole: UserRole;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "resubmit";
   timestamp?: number;
   comment?: string;
 }
@@ -99,22 +97,17 @@ export interface Proposal {
   rejectedByName?: string;
   rejectionReason?: string;
   comments: Comment[];
-  // Type fields
-  type: ProposalType | string; // String for custom types
-  customTypeId?: string; // Reference to a custom type
-  // Dynamic fields based on customTypeId
+  type: ProposalType | string;
+  customTypeId?: string;
   fieldValues?: Record<string, any>;
-  // Legacy fields (kept for backward compatibility)
   budget?: string;
   timeline?: string;
   justification?: string;
   department?: string;
-  // Multi-approver workflow
-  approvers?: string[]; // List of user IDs who need to approve
-  approvalSteps?: ApprovalStep[]; // History of the approval process
-  pendingApprovers?: string[]; // List of user IDs who still need to approve
+  approvers?: string[];
+  approvalSteps?: ApprovalStep[];
+  pendingApprovers?: string[];
   assignedToRegistrar?: boolean;
-  // When a proposal is resubmitted
   resubmitted?: boolean;
   resubmittedAt?: number;
 }
@@ -126,7 +119,6 @@ export type ProposalFormData = {
   type: ProposalType | string;
   customTypeId?: string;
   fieldValues?: Record<string, any>;
-  // Legacy fields
   budget?: string;
   timeline?: string;
   justification?: string;

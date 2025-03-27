@@ -39,7 +39,8 @@ import {
   Users,
   CheckSquare,
   PlusCircle,
-  Edit
+  Edit,
+  RotateCcw
 } from "lucide-react";
 import {
   Select,
@@ -57,18 +58,23 @@ const ProposalDetails: React.FC = () => {
     getProposalById, 
     approveProposal, 
     rejectProposal, 
+    requestRevision,
     resubmitProposal, 
     approveAsApprover,
     rejectAsApprover,
+    requestRevisionAsApprover,
     assignApprovers,
     assignToRegistrar,
     approveAsRegistrar,
     rejectAsRegistrar,
+    requestRevisionAsRegistrar,
     getApprovalProgress,
-    canResubmit: checkCanResubmit
+    canResubmit: checkCanResubmit,
+    hasAllApproversResponded
   } = useProposals();
   const { currentUser, users } = useAuth();
   const [rejectionReason, setRejectionReason] = useState("");
+  const [revisionReason, setRevisionReason] = useState("");
   const [approvalComment, setApprovalComment] = useState("");
   const [selectedApprovers, setSelectedApprovers] = useState<string[]>([]);
 
@@ -128,24 +134,30 @@ const ProposalDetails: React.FC = () => {
   const canReject = 
     (isAssignee && proposal.status === ProposalStatus.PENDING_SUPERIOR) || 
     (isAdmin && proposal.status === ProposalStatus.PENDING_ADMIN);
+    
+  const canRequestRevision = 
+    (isAssignee && proposal.status === ProposalStatus.PENDING_SUPERIOR) || 
+    (isAdmin && proposal.status === ProposalStatus.PENDING_ADMIN);
   
-  const canResubmit = isCreator && proposal.status === ProposalStatus.REJECTED;
+  const canResubmit = checkCanResubmit(proposal, currentUser.id);
   
   const canAssignApprovers = isAdmin && proposal.status === ProposalStatus.PENDING_APPROVERS;
   
   const canApproveAsApprover = isPendingApprover && proposal.status === ProposalStatus.PENDING_APPROVERS;
   const canRejectAsApprover = isPendingApprover && proposal.status === ProposalStatus.PENDING_APPROVERS;
+  const canRequestRevisionAsApprover = isPendingApprover && proposal.status === ProposalStatus.PENDING_APPROVERS;
   
   const canSendToRegistrar = isAdmin && 
                             proposal.status === ProposalStatus.PENDING_APPROVERS && 
-                            proposal.pendingApprovers?.length === 0;
+                            hasAllApproversResponded(proposal.id);
   
   const canApproveAsRegistrar = isRegistrar && proposal.status === ProposalStatus.PENDING_REGISTRAR;
   const canRejectAsRegistrar = isRegistrar && proposal.status === ProposalStatus.PENDING_REGISTRAR;
+  const canRequestRevisionAsRegistrar = isRegistrar && proposal.status === ProposalStatus.PENDING_REGISTRAR;
 
   const canEdit = isCreator && 
                  (proposal.status === ProposalStatus.DRAFT || 
-                  proposal.status === ProposalStatus.REJECTED ||
+                  proposal.status === ProposalStatus.NEEDS_REVISION ||
                   proposal.status === ProposalStatus.PENDING_SUPERIOR);
 
   const approvalProgress = getApprovalProgress(proposal.id);
@@ -201,6 +213,15 @@ const ProposalDetails: React.FC = () => {
             Rejected
           </Badge>
         );
+      case ProposalStatus.NEEDS_REVISION:
+        return (
+          <Badge variant="outline" className="bg-amber-500 text-white">
+            <RotateCcw className="mr-1 h-3 w-3" />
+            Needs Revision
+          </Badge>
+        );
+      default:
+        return null;
     }
   };
 
@@ -267,6 +288,11 @@ const ProposalDetails: React.FC = () => {
     rejectProposal(proposal.id, rejectionReason);
     setRejectionReason("");
   };
+  
+  const handleRequestRevision = () => {
+    requestRevision(proposal.id, revisionReason);
+    setRevisionReason("");
+  };
 
   const handleResubmit = () => {
     resubmitProposal(proposal.id);
@@ -280,6 +306,11 @@ const ProposalDetails: React.FC = () => {
   const handleRejectAsApprover = () => {
     rejectAsApprover(proposal.id, rejectionReason);
     setRejectionReason("");
+  };
+  
+  const handleRequestRevisionAsApprover = () => {
+    requestRevisionAsApprover(proposal.id, revisionReason);
+    setRevisionReason("");
   };
   
   const handleAssignApprovers = () => {
@@ -303,6 +334,11 @@ const ProposalDetails: React.FC = () => {
   const handleRejectAsRegistrar = () => {
     rejectAsRegistrar(proposal.id, rejectionReason);
     setRejectionReason("");
+  };
+  
+  const handleRequestRevisionAsRegistrar = () => {
+    requestRevisionAsRegistrar(proposal.id, revisionReason);
+    setRevisionReason("");
   };
   
   const toggleApprover = (userId: string) => {
@@ -480,13 +516,21 @@ const ProposalDetails: React.FC = () => {
 
                 {renderApprovalSteps()}
 
-                {proposal.status === ProposalStatus.REJECTED && proposal.rejectionReason && (
-                  <div className="bg-destructive/5 border border-destructive/20 p-4 rounded-md mb-6">
+                {(proposal.status === ProposalStatus.REJECTED || proposal.status === ProposalStatus.NEEDS_REVISION) && proposal.rejectionReason && (
+                  <div className={`${proposal.status === ProposalStatus.REJECTED ? "bg-destructive/5 border-destructive/20" : "bg-amber-50 border-amber-200"} border p-4 rounded-md mb-6`}>
                     <div className="flex items-center gap-2 mb-2">
-                      <AlertTriangle className="h-4 w-4 text-destructive" />
-                      <h3 className="text-sm font-medium">Rejection Reason</h3>
+                      {proposal.status === ProposalStatus.REJECTED ? (
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                      ) : (
+                        <RotateCcw className="h-4 w-4 text-amber-500" />
+                      )}
+                      <h3 className="text-sm font-medium">
+                        {proposal.status === ProposalStatus.REJECTED ? "Rejection Reason" : "Revision Requested"}
+                      </h3>
                     </div>
-                    <p className="text-destructive/80">{proposal.rejectionReason}</p>
+                    <p className={proposal.status === ProposalStatus.REJECTED ? "text-destructive/80" : "text-amber-700"}>
+                      {proposal.rejectionReason}
+                    </p>
                   </div>
                 )}
 
@@ -500,123 +544,269 @@ const ProposalDetails: React.FC = () => {
                   </Button>
                 )}
                 
+                {canResubmit && (
+                  <Button onClick={handleResubmit}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Resubmit
+                  </Button>
+                )}
+                
                 {canApprove && (
-                  <div className="w-full">
+                  <div className="w-full mb-3">
                     <Textarea
                       placeholder="Add a comment with your approval (optional)"
                       value={approvalComment}
                       onChange={(e) => setApprovalComment(e.target.value)}
                       className="mb-3"
                     />
-                    <Button onClick={handleApprove} className="ml-auto">
-                      <ThumbsUp className="mr-2 h-4 w-4" />
-                      Approve
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button onClick={handleApprove}>
+                        <ThumbsUp className="mr-2 h-4 w-4" />
+                        Approve
+                      </Button>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" className="text-destructive">
+                            <ThumbsDown className="mr-2 h-4 w-4" />
+                            Reject
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Reject Proposal</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently reject the proposal. The proposer will not be able to resubmit.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="py-2">
+                            <Textarea
+                              placeholder="Reason for rejection"
+                              value={rejectionReason}
+                              onChange={(e) => setRejectionReason(e.target.value)}
+                              className="min-h-[100px]"
+                            />
+                          </div>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={handleReject} 
+                              disabled={!rejectionReason.trim()}
+                              className="bg-destructive text-destructive-foreground"
+                            >
+                              Confirm Rejection
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="secondary">
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Request Revision
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Request Revision</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Request changes to the proposal. The proposer will be able to edit and resubmit.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="py-2">
+                            <Textarea
+                              placeholder="Explain what changes are needed"
+                              value={revisionReason}
+                              onChange={(e) => setRevisionReason(e.target.value)}
+                              className="min-h-[100px]"
+                            />
+                          </div>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={handleRequestRevision} 
+                              disabled={!revisionReason.trim()}
+                            >
+                              Request Changes
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 )}
                 
                 {canApproveAsApprover && (
-                  <div className="w-full">
+                  <div className="w-full mb-3">
                     <Textarea
                       placeholder="Add a comment with your approval (optional)"
                       value={approvalComment}
                       onChange={(e) => setApprovalComment(e.target.value)}
                       className="mb-3"
                     />
-                    <Button onClick={handleApproveAsApprover}>
-                      <ThumbsUp className="mr-2 h-4 w-4" />
-                      Approve as Reviewer
-                    </Button>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button onClick={handleApproveAsApprover}>
+                        <ThumbsUp className="mr-2 h-4 w-4" />
+                        Approve as Reviewer
+                      </Button>
+                    
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" className="text-destructive">
+                            <ThumbsDown className="mr-2 h-4 w-4" />
+                            Reject as Reviewer
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Reject Proposal</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Your rejection will be recorded, but the proposal will still proceed to other approvers.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="py-2">
+                            <Textarea
+                              placeholder="Reason for rejection"
+                              value={rejectionReason}
+                              onChange={(e) => setRejectionReason(e.target.value)}
+                              className="min-h-[100px]"
+                            />
+                          </div>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={handleRejectAsApprover} 
+                              disabled={!rejectionReason.trim()}
+                              className="bg-destructive text-destructive-foreground"
+                            >
+                              Submit Rejection
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="secondary">
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Request Revision
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Request Revision</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Request changes to the proposal. The proposer will be able to edit and resubmit.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="py-2">
+                            <Textarea
+                              placeholder="Explain what changes are needed"
+                              value={revisionReason}
+                              onChange={(e) => setRevisionReason(e.target.value)}
+                              className="min-h-[100px]"
+                            />
+                          </div>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={handleRequestRevisionAsApprover} 
+                              disabled={!revisionReason.trim()}
+                            >
+                              Request Changes
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 )}
                 
-                {canRejectAsApprover && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" className="text-destructive">
-                        <ThumbsDown className="mr-2 h-4 w-4" />
-                        Reject as Reviewer
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Reject Proposal</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Please provide a reason for rejection.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <div className="py-2">
-                        <Textarea
-                          placeholder="Reason for rejection"
-                          value={rejectionReason}
-                          onChange={(e) => setRejectionReason(e.target.value)}
-                          className="min-h-[100px]"
-                        />
-                      </div>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={handleRejectAsApprover} 
-                          disabled={!rejectionReason.trim()}
-                          className="bg-destructive text-destructive-foreground"
-                        >
-                          Submit Rejection
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
-                
                 {canApproveAsRegistrar && (
-                  <div className="w-full">
+                  <div className="w-full mb-3">
                     <Textarea
                       placeholder="Add a comment with your final approval (optional)"
                       value={approvalComment}
                       onChange={(e) => setApprovalComment(e.target.value)}
                       className="mb-3"
                     />
-                    <Button onClick={handleApproveAsRegistrar}>
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Final Approval
-                    </Button>
-                  </div>
-                )}
-                
-                {canRejectAsRegistrar && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" className="text-destructive">
-                        <ThumbsDown className="mr-2 h-4 w-4" />
-                        Reject as Registrar
+                    <div className="flex gap-2 flex-wrap">
+                      <Button onClick={handleApproveAsRegistrar}>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Final Approval
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Reject Proposal</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Please provide a reason for rejection.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <div className="py-2">
-                        <Textarea
-                          placeholder="Reason for rejection"
-                          value={rejectionReason}
-                          onChange={(e) => setRejectionReason(e.target.value)}
-                          className="min-h-[100px]"
-                        />
-                      </div>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={handleRejectAsRegistrar} 
-                          disabled={!rejectionReason.trim()}
-                          className="bg-destructive text-destructive-foreground"
-                        >
-                          Submit Rejection
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" className="text-destructive">
+                            <ThumbsDown className="mr-2 h-4 w-4" />
+                            Reject as Registrar
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Reject Proposal</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently reject the proposal. The proposer will not be able to resubmit.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="py-2">
+                            <Textarea
+                              placeholder="Reason for rejection"
+                              value={rejectionReason}
+                              onChange={(e) => setRejectionReason(e.target.value)}
+                              className="min-h-[100px]"
+                            />
+                          </div>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={handleRejectAsRegistrar} 
+                              disabled={!rejectionReason.trim()}
+                              className="bg-destructive text-destructive-foreground"
+                            >
+                              Confirm Rejection
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="secondary">
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Request Revision
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Request Revision</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Request changes to the proposal. The proposer will be able to edit and resubmit.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="py-2">
+                            <Textarea
+                              placeholder="Explain what changes are needed"
+                              value={revisionReason}
+                              onChange={(e) => setRevisionReason(e.target.value)}
+                              className="min-h-[100px]"
+                            />
+                          </div>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={handleRequestRevisionAsRegistrar} 
+                              disabled={!revisionReason.trim()}
+                            >
+                              Request Changes
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
                 )}
                 
                 {canSendToRegistrar && (
@@ -624,68 +814,6 @@ const ProposalDetails: React.FC = () => {
                     <CheckSquare className="mr-2 h-4 w-4" />
                     Send to Registrar
                   </Button>
-                )}
-                
-                {canReject && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" className="text-destructive">
-                        <ThumbsDown className="mr-2 h-4 w-4" />
-                        Reject
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Reject Proposal</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Please provide a reason for rejection. The proposer will be able to view this feedback.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <div className="py-2">
-                        <Textarea
-                          placeholder="Reason for rejection"
-                          value={rejectionReason}
-                          onChange={(e) => setRejectionReason(e.target.value)}
-                          className="min-h-[100px]"
-                        />
-                      </div>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={handleReject} 
-                          disabled={!rejectionReason.trim()}
-                          className="bg-destructive text-destructive-foreground"
-                        >
-                          Submit Rejection
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
-                
-                {canResubmit && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Resubmit
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Resubmit Proposal</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will reset the proposal status and send it back for approval. Any previous rejections will be cleared.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleResubmit}>
-                          Resubmit
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
                 )}
               </CardFooter>
             </Card>
