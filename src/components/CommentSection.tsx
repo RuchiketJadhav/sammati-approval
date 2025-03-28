@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface CommentSectionProps {
   proposalId: string;
@@ -33,42 +34,44 @@ const CommentSection: React.FC<CommentSectionProps> = ({ proposalId, comments })
       <h3 className="text-lg font-medium">Comments</h3>
       
       <div className="space-y-4">
-        <AnimatePresence>
-          {comments.length > 0 ? (
-            comments
-              .sort((a, b) => b.timestamp - a.timestamp)
-              .map((comment, index) => (
-                <motion.div
-                  key={comment.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                  className="flex space-x-3 p-3 rounded-lg bg-muted/30"
-                >
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={comment.userAvatar} alt={comment.userName} />
-                    <AvatarFallback>
-                      {comment.userName.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-baseline justify-between mb-1">
-                      <h4 className="text-sm font-medium">{comment.userName}</h4>
-                      <span className="text-xs text-muted-foreground">
-                        {format(comment.timestamp, "MMM d, yyyy 'at' h:mm a")}
-                      </span>
+        {comments.length > 0 ? (
+          <ScrollArea className="h-[400px] pr-4">
+            <AnimatePresence>
+              {comments
+                .sort((a, b) => b.timestamp - a.timestamp)
+                .map((comment, index) => (
+                  <motion.div
+                    key={comment.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    className="flex space-x-3 p-3 rounded-lg bg-muted/30 mb-3"
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={comment.userAvatar} alt={comment.userName} />
+                      <AvatarFallback>
+                        {comment.userName.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-baseline justify-between mb-1">
+                        <h4 className="text-sm font-medium">{comment.userName}</h4>
+                        <span className="text-xs text-muted-foreground">
+                          {format(comment.timestamp, "MMM d, yyyy 'at' h:mm a")}
+                        </span>
+                      </div>
+                      <p className="text-sm">{comment.text}</p>
                     </div>
-                    <p className="text-sm">{comment.text}</p>
-                  </div>
-                </motion.div>
-              ))
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No comments yet
-            </p>
-          )}
-        </AnimatePresence>
+                  </motion.div>
+                ))}
+            </AnimatePresence>
+          </ScrollArea>
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No comments yet
+          </p>
+        )}
       </div>
 
       {currentUser && (

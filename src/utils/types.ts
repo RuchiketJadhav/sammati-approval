@@ -1,3 +1,4 @@
+
 export enum ProposalStatus {
   DRAFT = "DRAFT",
   PENDING_SUPERIOR = "PENDING_SUPERIOR",
@@ -112,6 +113,7 @@ export interface Proposal {
   resubmittedAt?: number;
   approversAssigned?: boolean;
   needsReassignment?: boolean;
+  rejectedByRegistrar?: boolean; // Add this new flag to track registrar rejections
 }
 
 export type ProposalFormData = {

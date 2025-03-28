@@ -426,7 +426,6 @@ const ProposalDetails: React.FC = () => {
     if (!canAssignApprovers) return null;
     
     const potentialApprovers = users.filter(user => {
-      // Filter based on search query
       if (approverSearchQuery) {
         return user.name.toLowerCase().includes(approverSearchQuery.toLowerCase());
       }
@@ -560,7 +559,9 @@ const ProposalDetails: React.FC = () => {
                         <RotateCcw className="h-4 w-4 text-amber-500" />
                       )}
                       <h3 className="text-sm font-medium">
-                        {proposal.status === ProposalStatus.REJECTED ? "Rejection Reason" : "Revision Requested"}
+                        {proposal.status === ProposalStatus.REJECTED ? 
+                          (proposal.rejectedByRegistrar ? "Rejected by Registrar (Final)" : "Rejection Reason") : 
+                          "Revision Requested"}
                       </h3>
                     </div>
                     <p className={proposal.status === ProposalStatus.REJECTED ? "text-destructive/80" : "text-amber-700"}>
@@ -682,40 +683,6 @@ const ProposalDetails: React.FC = () => {
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
-                      
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="secondary">
-                            <RotateCcw className="mr-2 h-4 w-4" />
-                            Request Revision
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Request Revision</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Request changes to the proposal. The proposer will be able to edit and resubmit.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <div className="py-2">
-                            <Textarea
-                              placeholder="Explain what changes are needed"
-                              value={revisionReason}
-                              onChange={(e) => setRevisionReason(e.target.value)}
-                              className="min-h-[100px]"
-                            />
-                          </div>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={handleRequestRevision} 
-                              disabled={!revisionReason.trim()}
-                            >
-                              Request Changes
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
                     </div>
                   </div>
                 )}
@@ -768,40 +735,6 @@ const ProposalDetails: React.FC = () => {
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
-                    
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="secondary">
-                            <RotateCcw className="mr-2 h-4 w-4" />
-                            Request Revision
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Request Revision</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Request changes to the proposal. The proposer will be able to edit and resubmit.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <div className="py-2">
-                            <Textarea
-                              placeholder="Explain what changes are needed"
-                              value={revisionReason}
-                              onChange={(e) => setRevisionReason(e.target.value)}
-                              className="min-h-[100px]"
-                            />
-                          </div>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={handleRequestRevisionAsApprover} 
-                              disabled={!revisionReason.trim()}
-                            >
-                              Request Changes
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
                     </div>
                   </div>
                 )}
@@ -850,40 +783,6 @@ const ProposalDetails: React.FC = () => {
                               className="bg-destructive text-destructive-foreground"
                             >
                               Confirm Rejection
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                      
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="secondary">
-                            <RotateCcw className="mr-2 h-4 w-4" />
-                            Request Revision
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Request Revision</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Request changes to the proposal. The proposer will be able to edit and resubmit.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <div className="py-2">
-                            <Textarea
-                              placeholder="Explain what changes are needed"
-                              value={revisionReason}
-                              onChange={(e) => setRevisionReason(e.target.value)}
-                              className="min-h-[100px]"
-                            />
-                          </div>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={handleRequestRevisionAsRegistrar} 
-                              disabled={!revisionReason.trim()}
-                            >
-                              Request Changes
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

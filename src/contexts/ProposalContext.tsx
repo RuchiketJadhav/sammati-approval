@@ -585,7 +585,93 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       })
     );
   };
-  
+
+  const rejectAsRegistrar = (proposalId: string, reason: string) => {
+    if (!currentUser) throw new Error("You must be logged in");
+    if (currentUser.role !== UserRole.REGISTRAR) throw new Error("Only registrars can reject at this stage");
+    
+    setProposals(prev => 
+      prev.map(proposal => {
+        if (proposal.id !== proposalId) return proposal;
+        
+        if (proposal.status !== ProposalStatus.PENDING_REGISTRAR) {
+          throw new Error("This proposal is not pending registrar review");
+        }
+        
+        const updatedProposal = { ...proposal, updatedAt: Date.now() };
+        
+        const approvalSteps = updatedProposal.approvalSteps || [];
+        const newStep: ApprovalStep = {
+          userId: currentUser.id,
+          userName: currentUser.name,
+          userRole: currentUser.role,
+          status: "rejected", 
+          timestamp: Date.now(),
+          comment: reason
+        };
+        
+        updatedProposal.approvalSteps = [...approvalSteps, newStep];
+        
+        updatedProposal.status = ProposalStatus.REJECTED;
+        updatedProposal.rejectedBy = currentUser.id;
+        updatedProposal.rejectedByName = currentUser.name;
+        updatedProposal.rejectionReason = reason;
+        updatedProposal.rejectedByRegistrar = true; // Set the new flag
+        
+        toast.error("Proposal rejected by Registrar");
+        return updatedProposal;
+      })
+    );
+  };
+
+  const requestRevisionAsRegistrar = (proposalId: string, reason: string) => {
+    if (!currentUser) throw new Error("You must be logged in");
+    if (currentUser.role !== UserRole.REGISTRAR) throw new Error("Only registrars can request revisions at this stage");
+    
+    setProposals(prev => 
+      prev.map(proposal => {
+        if (proposal.id !== proposalId) return proposal;
+        
+        if (proposal.status !== ProposalStatus.PENDING_REGISTRAR) {
+          throw new Error("This proposal is not pending registrar review");
+        }
+        
+        const updatedProposal = { ...proposal, updatedAt: Date.now() };
+        
+        const approvalSteps = updatedProposal.approvalSteps || [];
+        const newStep: ApprovalStep = {
+          userId: currentUser.id,
+          userName: currentUser.name,
+          userRole: currentUser.role,
+          status: "resubmit", 
+          timestamp: Date.now(),
+          comment: reason
+        };
+        
+        updatedProposal.approvalSteps = [...approvalSteps, newStep];
+        
+        updatedProposal.status = ProposalStatus.NEEDS_REVISION;
+        updatedProposal.rejectionReason = reason;
+        updatedProposal.needsReassignment = true; // Mark that reassignment is needed after revision
+        
+        const newComment: Comment = {
+          id: `comment${Date.now()}`,
+          proposalId,
+          userId: currentUser.id,
+          userName: currentUser.name,
+          userAvatar: currentUser.avatar,
+          text: `Revision requested by Registrar: ${reason}`,
+          timestamp: Date.now()
+        };
+        
+        updatedProposal.comments = [...proposal.comments, newComment];
+        
+        toast.info("Revision requested from the proposer");
+        return updatedProposal;
+      })
+    );
+  };
+
   const getApprovalProgress = (proposalId: string) => {
     const proposal = getProposalById(proposalId);
     if (!proposal || !proposal.approvalSteps) return 0;
@@ -688,6 +774,10 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const canResubmit = (proposal: Proposal, userId: string) => {
+    if (proposal.rejectedByRegistrar) {
+      return false;
+    }
+    
     return proposal.createdBy === userId && 
       (proposal.status === ProposalStatus.NEEDS_REVISION || 
        proposal.status === ProposalStatus.REJECTED);
@@ -721,91 +811,6 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       })
     );
     toast.info("Revision requested from the proposer");
-  };
-
-  const rejectAsRegistrar = (proposalId: string, reason: string) => {
-    if (!currentUser) throw new Error("You must be logged in");
-    if (currentUser.role !== UserRole.REGISTRAR) throw new Error("Only registrars can reject at this stage");
-    
-    setProposals(prev => 
-      prev.map(proposal => {
-        if (proposal.id !== proposalId) return proposal;
-        
-        if (proposal.status !== ProposalStatus.PENDING_REGISTRAR) {
-          throw new Error("This proposal is not pending registrar review");
-        }
-        
-        const updatedProposal = { ...proposal, updatedAt: Date.now() };
-        
-        const approvalSteps = updatedProposal.approvalSteps || [];
-        const newStep: ApprovalStep = {
-          userId: currentUser.id,
-          userName: currentUser.name,
-          userRole: currentUser.role,
-          status: "rejected", 
-          timestamp: Date.now(),
-          comment: reason
-        };
-        
-        updatedProposal.approvalSteps = [...approvalSteps, newStep];
-        
-        updatedProposal.status = ProposalStatus.REJECTED;
-        updatedProposal.rejectedBy = currentUser.id;
-        updatedProposal.rejectedByName = currentUser.name;
-        updatedProposal.rejectionReason = reason;
-        
-        toast.error("Proposal rejected by Registrar");
-        return updatedProposal;
-      })
-    );
-  };
-
-  const requestRevisionAsRegistrar = (proposalId: string, reason: string) => {
-    if (!currentUser) throw new Error("You must be logged in");
-    if (currentUser.role !== UserRole.REGISTRAR) throw new Error("Only registrars can request revisions at this stage");
-    
-    setProposals(prev => 
-      prev.map(proposal => {
-        if (proposal.id !== proposalId) return proposal;
-        
-        if (proposal.status !== ProposalStatus.PENDING_REGISTRAR) {
-          throw new Error("This proposal is not pending registrar review");
-        }
-        
-        const updatedProposal = { ...proposal, updatedAt: Date.now() };
-        
-        const approvalSteps = updatedProposal.approvalSteps || [];
-        const newStep: ApprovalStep = {
-          userId: currentUser.id,
-          userName: currentUser.name,
-          userRole: currentUser.role,
-          status: "resubmit", 
-          timestamp: Date.now(),
-          comment: reason
-        };
-        
-        updatedProposal.approvalSteps = [...approvalSteps, newStep];
-        
-        updatedProposal.status = ProposalStatus.NEEDS_REVISION;
-        updatedProposal.rejectionReason = reason;
-        updatedProposal.needsReassignment = true; // Mark that reassignment is needed after revision
-        
-        const newComment: Comment = {
-          id: `comment${Date.now()}`,
-          proposalId,
-          userId: currentUser.id,
-          userName: currentUser.name,
-          userAvatar: currentUser.avatar,
-          text: `Revision requested by Registrar: ${reason}`,
-          timestamp: Date.now()
-        };
-        
-        updatedProposal.comments = [...proposal.comments, newComment];
-        
-        toast.info("Revision requested from the proposer");
-        return updatedProposal;
-      })
-    );
   };
 
   const hasAllApproversResponded = (proposalId: string) => {
