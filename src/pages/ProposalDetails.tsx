@@ -64,7 +64,6 @@ const ProposalDetails: React.FC = () => {
     resubmitProposal, 
     approveAsApprover,
     rejectAsApprover,
-    requestRevisionAsApprover,
     assignApprovers,
     assignToRegistrar,
     approveAsRegistrar,
@@ -129,7 +128,7 @@ const ProposalDetails: React.FC = () => {
   const isRegistrar = currentUser.role === UserRole.REGISTRAR;
   const isPendingApprover = proposal.pendingApprovers?.includes(currentUser.id);
   
-  const canSeeApprovalDetails = isAdmin || isRegistrar;
+  const canSeeApprovalDetails = isAdmin || isRegistrar || isCreator;
   
   const canApprove = 
     (isAssignee && proposal.status === ProposalStatus.PENDING_SUPERIOR) || 
@@ -151,7 +150,6 @@ const ProposalDetails: React.FC = () => {
   
   const canApproveAsApprover = isPendingApprover && proposal.status === ProposalStatus.PENDING_APPROVERS;
   const canRejectAsApprover = isPendingApprover && proposal.status === ProposalStatus.PENDING_APPROVERS;
-  const canRequestRevisionAsApprover = isPendingApprover && proposal.status === ProposalStatus.PENDING_APPROVERS;
   
   const canSendToRegistrar = isAdmin && 
                             proposal.status === ProposalStatus.PENDING_APPROVERS && 
@@ -313,11 +311,6 @@ const ProposalDetails: React.FC = () => {
   const handleRejectAsApprover = () => {
     rejectAsApprover(proposal.id, rejectionReason);
     setRejectionReason("");
-  };
-  
-  const handleRequestRevisionAsApprover = () => {
-    requestRevisionAsApprover(proposal.id, revisionReason);
-    setRevisionReason("");
   };
   
   const handleAssignApprovers = () => {
@@ -683,6 +676,40 @@ const ProposalDetails: React.FC = () => {
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline">
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Request Revision
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Request Revision</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will send the proposal back to the proposer for revisions.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="py-2">
+                            <Textarea
+                              placeholder="Details of required revisions"
+                              value={revisionReason}
+                              onChange={(e) => setRevisionReason(e.target.value)}
+                              className="min-h-[100px]"
+                            />
+                          </div>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={handleRequestRevision} 
+                              disabled={!revisionReason.trim()}
+                            >
+                              Request Revision
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 )}
@@ -783,6 +810,40 @@ const ProposalDetails: React.FC = () => {
                               className="bg-destructive text-destructive-foreground"
                             >
                               Confirm Rejection
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline">
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Request Revision
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Request Revision</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will send the proposal back to the proposer for revisions.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="py-2">
+                            <Textarea
+                              placeholder="Details of required revisions"
+                              value={revisionReason}
+                              onChange={(e) => setRevisionReason(e.target.value)}
+                              className="min-h-[100px]"
+                            />
+                          </div>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={handleRequestRevisionAsRegistrar} 
+                              disabled={!revisionReason.trim()}
+                            >
+                              Request Revision
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

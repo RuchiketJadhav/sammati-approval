@@ -113,7 +113,7 @@ export interface Proposal {
   resubmittedAt?: number;
   approversAssigned?: boolean;
   needsReassignment?: boolean;
-  rejectedByRegistrar?: boolean; // Add this new flag to track registrar rejections
+  rejectedByRegistrar?: boolean; // Flag to track registrar rejections
 }
 
 export type ProposalFormData = {
