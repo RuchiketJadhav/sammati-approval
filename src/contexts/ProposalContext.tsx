@@ -19,6 +19,7 @@ interface ProposalContextType {
   assignApprovers: (proposalId: string, approverIds: string[]) => void;
   approveAsApprover: (proposalId: string, comment?: string) => void;
   rejectAsApprover: (proposalId: string, reason: string) => void;
+  requestRevisionAsApprover: (proposalId: string, reason: string) => void;
   assignToRegistrar: (proposalId: string) => void;
   approveAsRegistrar: (proposalId: string, comment?: string) => void;
   rejectAsRegistrar: (proposalId: string, reason: string) => void;
@@ -468,6 +469,59 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
   };
 
+  const requestRevisionAsApprover = (proposalId: string, reason: string) => {
+    if (!currentUser) throw new Error("You must be logged in to request revisions");
+    
+    setProposals(prev => 
+      prev.map(proposal => {
+        if (proposal.id !== proposalId) return proposal;
+        
+        if (proposal.status !== ProposalStatus.PENDING_APPROVERS) {
+          throw new Error("This proposal is not pending approver review");
+        }
+        
+        if (!proposal.pendingApprovers?.includes(currentUser.id)) {
+          throw new Error("You are not assigned as an approver for this proposal");
+        }
+        
+        const updatedProposal = { ...proposal, updatedAt: Date.now() };
+        
+        const approvalSteps = updatedProposal.approvalSteps || [];
+        const updatedSteps = approvalSteps.map(step => {
+          if (step.userId === currentUser.id && step.status === "pending") {
+            return {
+              ...step,
+              status: "resubmit" as const,
+              timestamp: Date.now(),
+              comment: reason
+            };
+          }
+          return step;
+        });
+        updatedProposal.approvalSteps = updatedSteps;
+        
+        updatedProposal.status = ProposalStatus.NEEDS_REVISION;
+        updatedProposal.rejectionReason = reason;
+        updatedProposal.needsReassignment = true; // Mark that reassignment is needed after revision
+        
+        const newComment: Comment = {
+          id: `comment${Date.now()}`,
+          proposalId,
+          userId: currentUser.id,
+          userName: currentUser.name,
+          userAvatar: currentUser.avatar,
+          text: `Revision requested: ${reason}`,
+          timestamp: Date.now()
+        };
+        
+        updatedProposal.comments = [...proposal.comments, newComment];
+        
+        toast.info("Revision requested from the proposer");
+        return updatedProposal;
+      })
+    );
+  };
+  
   const assignToRegistrar = (proposalId: string) => {
     if (!currentUser) throw new Error("You must be logged in");
     if (currentUser.role !== UserRole.ADMIN) throw new Error("Only admins can assign to registrar");
@@ -562,7 +616,7 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updatedProposal.rejectedBy = currentUser.id;
         updatedProposal.rejectedByName = currentUser.name;
         updatedProposal.rejectionReason = reason;
-        updatedProposal.rejectedByRegistrar = true; // Set the flag to prevent resubmission
+        updatedProposal.rejectedByRegistrar = true; // Set the new flag
         
         toast.error("Proposal rejected by Registrar");
         return updatedProposal;
@@ -720,7 +774,6 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const canResubmit = (proposal: Proposal, userId: string) => {
-    // Check if the proposal was rejected by the registrar
     if (proposal.rejectedByRegistrar) {
       return false;
     }
@@ -801,7 +854,7 @@ export const ProposalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         assignApprovers,
         approveAsApprover,
         rejectAsApprover,
-        requestRevisionAsApprover: () => {}, // Placeholder since we removed the functionality
+        requestRevisionAsApprover,
         assignToRegistrar,
         approveAsRegistrar,
         rejectAsRegistrar,
