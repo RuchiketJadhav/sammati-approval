@@ -361,10 +361,6 @@ const ProposalDetails: React.FC = () => {
       return null;
     }
     
-    if (!canSeeApprovalDetails) {
-      return null;
-    }
-
     return (
       <div className="mb-6">
         <h3 className="text-sm font-medium text-muted-foreground mb-2">Approval Process</h3>
@@ -394,6 +390,11 @@ const ProposalDetails: React.FC = () => {
                     <Badge variant="outline" className="badge-destructive">
                       <XCircle className="mr-1 h-3 w-3" />
                       Rejected
+                    </Badge>
+                  ) : step.status === "resubmit" ? (
+                    <Badge variant="outline" className="bg-amber-500 text-white">
+                      <RotateCcw className="mr-1 h-3 w-3" />
+                      Requested Revision
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="badge-pending">

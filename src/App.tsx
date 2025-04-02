@@ -38,6 +38,7 @@ function AppRoutes() {
       <Route path="/proposal/:id" element={<ProtectedRoute><ProposalDetails /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="/manage-proposal-types" element={<ProtectedRoute><ManageProposalTypes /></ProtectedRoute>} />
+      <Route path="/manage-types" element={<Navigate to="/manage-proposal-types" replace />} /> // Redirect to correct route
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

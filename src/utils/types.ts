@@ -113,7 +113,7 @@ export interface Proposal {
   resubmittedAt?: number;
   approversAssigned?: boolean;
   needsReassignment?: boolean;
-  rejectedByRegistrar?: boolean; // Add this new flag to track registrar rejections
+  rejectedByRegistrar?: boolean;
 }
 
 export type ProposalFormData = {
@@ -128,3 +128,30 @@ export type ProposalFormData = {
   justification?: string;
   department?: string;
 };
+
+export interface ProposalContextType {
+  proposals: Proposal[];
+  getUserProposals: (userId: string) => Proposal[];
+  getAssignedProposals: (userId: string) => Proposal[];
+  getProposalById: (id: string) => Proposal | undefined;
+  createProposal: (data: ProposalFormData) => Proposal;
+  updateProposal: (id: string, data: Partial<Proposal>) => void;
+  deleteProposal: (id: string) => void;
+  approveProposal: (id: string, comment?: string) => void;
+  rejectProposal: (id: string, reason: string) => void;
+  requestRevision: (id: string, reason: string) => void;
+  resubmitProposal: (id: string) => void;
+  addComment: (proposalId: string, text: string) => void;
+  assignApprovers: (proposalId: string, approverIds: string[]) => void;
+  approveAsApprover: (proposalId: string, comment?: string) => void;
+  rejectAsApprover: (proposalId: string, reason: string) => void;
+  requestRevisionAsApprover: (proposalId: string, reason: string) => void;
+  assignToRegistrar: (proposalId: string) => void;
+  approveAsRegistrar: (proposalId: string, comment?: string) => void;
+  rejectAsRegistrar: (proposalId: string, reason: string) => void;
+  requestRevisionAsRegistrar: (proposalId: string, reason: string) => void;
+  getApprovalProgress: (proposalId: string) => number;
+  getPendingApprovers: (proposalId: string) => string[];
+  canResubmit: (proposal: Proposal, userId: string) => boolean;
+  hasAllApproversResponded: (proposalId: string) => boolean;
+}

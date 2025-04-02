@@ -21,6 +21,13 @@ const CommentSection: React.FC<CommentSectionProps> = ({ proposalId, comments })
   const { addComment } = useProposals();
   const { currentUser } = useAuth();
 
+  // Filter out comments made by approvers - we'll show these in the approval steps section instead
+  const regularComments = comments.filter(comment => 
+    !comment.text.startsWith("Rejected:") && 
+    !comment.text.startsWith("Revision requested:") &&
+    !comment.text.startsWith("Revision requested by Registrar:")
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (comment.trim()) {
@@ -34,10 +41,10 @@ const CommentSection: React.FC<CommentSectionProps> = ({ proposalId, comments })
       <h3 className="text-lg font-medium">Comments</h3>
       
       <div className="space-y-4">
-        {comments.length > 0 ? (
+        {regularComments.length > 0 ? (
           <ScrollArea className="h-[400px] pr-4">
             <AnimatePresence>
-              {comments
+              {regularComments
                 .sort((a, b) => b.timestamp - a.timestamp)
                 .map((comment, index) => (
                   <motion.div
