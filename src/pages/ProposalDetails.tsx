@@ -129,6 +129,7 @@ const ProposalDetails: React.FC = () => {
   const isRegistrar = currentUser.role === UserRole.REGISTRAR;
   const isPendingApprover = proposal.pendingApprovers?.includes(currentUser.id);
   
+  // This flag determines who can see the approval steps
   const canSeeApprovalDetails = isAdmin || isRegistrar;
   
   const canApprove = 
@@ -358,6 +359,11 @@ const ProposalDetails: React.FC = () => {
 
   const renderApprovalSteps = () => {
     if (!proposal.approvalSteps || proposal.approvalSteps.length === 0) {
+      return null;
+    }
+    
+    // Only show approval steps to admins and registrars
+    if (!canSeeApprovalDetails) {
       return null;
     }
     
