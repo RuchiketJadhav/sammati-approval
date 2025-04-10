@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProposal } from "@/contexts/ProposalContext";
+import { useProposals } from "@/contexts/ProposalContext";
 import { Proposal, ProposalStatus, UserRole } from "@/utils/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,7 @@ const ProposalDetails = () => {
     requestRevisionAsRegistrar,
     canResubmit,
     getApprovalProgress
-  } = useProposal();
+  } = useProposals();
   
   const [proposal, setProposal] = useState<Proposal | undefined>(undefined);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -80,11 +80,11 @@ const ProposalDetails = () => {
       case ProposalStatus.PENDING_REGISTRAR:
         return <Badge variant="secondary">Pending Registrar</Badge>;
       case ProposalStatus.APPROVED:
-        return <Badge variant="success">Approved</Badge>;
+        return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Approved</Badge>;
       case ProposalStatus.REJECTED:
         return <Badge variant="destructive">Rejected</Badge>;
       case ProposalStatus.NEEDS_REVISION:
-        return <Badge variant="warning">Needs Revision</Badge>;
+        return <Badge variant="outline" className="bg-amber-100 text-amber-800 hover:bg-amber-200">Needs Revision</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -237,7 +237,7 @@ const ProposalDetails = () => {
           </div>
           
           <div>
-            <CommentSection proposalId={proposal.id} />
+            <CommentSection proposalId={proposal.id} comments={proposal.comments} />
           </div>
         </div>
       </div>
