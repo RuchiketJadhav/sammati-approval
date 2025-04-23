@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,6 +34,7 @@ const ProposalDetails = () => {
   const [proposal, setProposal] = useState<Proposal | undefined>(undefined);
   const [rejectionReason, setRejectionReason] = useState("");
   const [progress, setProgress] = useState(0);
+  const [resubmitting, setResubmitting] = useState(false);
   
   useEffect(() => {
     if (id) {
@@ -46,6 +46,52 @@ const ProposalDetails = () => {
       }
     }
   }, [id, getProposalById, getApprovalProgress]);
+
+  // Determine who can resubmit
+  const canShowResubmitButton = () => {
+    if (!currentUser || !proposal) return false;
+    // Only Supervisor, Admin, Registrar can resubmit (not Approver nor Proposer)
+    if (
+      [UserRole.SUPERIOR, UserRole.ADMIN, UserRole.REGISTRAR].includes(currentUser.role)
+      // Also not already in flow
+      && (proposal.status === ProposalStatus.NEEDS_REVISION || proposal.status === ProposalStatus.REJECTED)
+      // Proposer can't resubmit themselves, only these roles
+    ) return true;
+    return false;
+  };
+
+  // Proposer can resubmit after revision/reject
+  const canProposerResubmit = () => {
+    if (!currentUser || !proposal) return false;
+    return (
+      currentUser.id === proposal.createdBy &&
+      (proposal.status === ProposalStatus.NEEDS_REVISION || proposal.status === ProposalStatus.REJECTED) &&
+      !proposal.rejectedByRegistrar // can't resubmit if registrar rejected
+    );
+  };
+
+  // Edit lock: Only proposer can edit after resubmit button (editing "locked" for others unless it's revision back to proposer)
+  const isEditingLocked = () => {
+    if (!currentUser || !proposal) return true;
+    // Only proposer can edit in revision state
+    if (
+      (proposal.status === ProposalStatus.NEEDS_REVISION || proposal.status === ProposalStatus.REJECTED) &&
+      currentUser.id === proposal.createdBy
+    ) return false; // unlocked for proposer
+    return true;
+  };
+
+  const handleResubmitClick = () => {
+    if (!proposal) return;
+    setResubmitting(true);
+    resubmitProposal(proposal.id);
+    setTimeout(() => {
+      setResubmitting(false);
+      // reload proposal state
+      const refreshed = getProposalById(proposal.id);
+      setProposal(refreshed);
+    }, 500);
+  };
   
   if (!proposal) {
     return (
@@ -230,8 +276,29 @@ const ProposalDetails = () => {
 
                 {renderApprovalSteps()}
                 
-                {/* Action buttons based on user role and proposal status */}
-                {/* ... Additional action buttons and controls based on user permissions and proposal status */}
+                {/* Resubmit logic */}
+                <div className="mt-6 flex gap-2">
+                  {canShowResubmitButton() && (
+                    <Button 
+                      variant="default"
+                      disabled={resubmitting}
+                      onClick={handleResubmitClick}
+                    >
+                      {resubmitting ? "Resubmitting..." : "Resubmit to Proposer"}
+                    </Button>
+                  )}
+                  {canProposerResubmit() && (
+                    <Button
+                      variant="default"
+                      disabled={resubmitting}
+                      onClick={handleResubmitClick}
+                    >
+                      {resubmitting ? "Resubmitting..." : "Resubmit for Approval"}
+                    </Button>
+                  )}
+                </div>
+                {/* Additional UI/lock based on isEditingLocked() can be added to the form editor for editing controls */}
+
               </CardContent>
             </Card>
           </div>
