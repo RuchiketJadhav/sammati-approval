@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,10 +7,11 @@ import { Proposal, ProposalStatus, UserRole } from "@/utils/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Calendar, FileText, Building, ArrowLeft, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { DollarSign, Calendar, FileText, Building, ArrowLeft, CheckCircle, XCircle, AlertCircle, Check, X, ArrowUp } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import Layout from "@/components/Layout";
 import CommentSection from "@/components/CommentSection";
+import { toast } from "sonner";
 
 const ProposalDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -35,6 +37,9 @@ const ProposalDetails = () => {
   const [rejectionReason, setRejectionReason] = useState("");
   const [progress, setProgress] = useState(0);
   const [resubmitting, setResubmitting] = useState(false);
+  const [showRejectionInput, setShowRejectionInput] = useState(false);
+  const [showRevisionInput, setShowRevisionInput] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   
   useEffect(() => {
     if (id) {
@@ -81,6 +86,47 @@ const ProposalDetails = () => {
     return true;
   };
 
+  // Check if the current user can approve the proposal
+  const canApprove = () => {
+    if (!currentUser || !proposal) return false;
+    
+    // Superior can approve pending_superior proposals
+    if (currentUser.role === UserRole.SUPERIOR && proposal.status === ProposalStatus.PENDING_SUPERIOR) {
+      return true;
+    }
+    
+    // Admin can approve pending_admin proposals
+    if (currentUser.role === UserRole.ADMIN && proposal.status === ProposalStatus.PENDING_ADMIN) {
+      return true;
+    }
+    
+    // Approvers can approve if proposal is in pending_approvers state and they are in the pending approvers list
+    if (currentUser.role === UserRole.APPROVER && 
+        proposal.status === ProposalStatus.PENDING_APPROVERS && 
+        proposal.pendingApprovers?.includes(currentUser.id)) {
+      return true;
+    }
+    
+    // Registrar can approve if proposal is in pending_registrar state
+    if (currentUser.role === UserRole.REGISTRAR && proposal.status === ProposalStatus.PENDING_REGISTRAR) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Check if the current user can reject the proposal
+  const canReject = () => {
+    // Same logic as approve - if you can approve, you can also reject
+    return canApprove();
+  };
+
+  // Check if the current user can request revision
+  const canRequestRevision = () => {
+    // Same logic as approve - if you can approve, you can also request revision
+    return canApprove();
+  };
+
   const handleResubmitClick = () => {
     if (!proposal) return;
     setResubmitting(true);
@@ -91,6 +137,100 @@ const ProposalDetails = () => {
       const refreshed = getProposalById(proposal.id);
       setProposal(refreshed);
     }, 500);
+  };
+
+  const handleApproveClick = () => {
+    if (!proposal || !currentUser) return;
+    
+    setActionLoading(true);
+    
+    try {
+      // Different approval functions based on user role
+      if (currentUser.role === UserRole.SUPERIOR || currentUser.role === UserRole.ADMIN) {
+        approveProposal(proposal.id);
+      } else if (currentUser.role === UserRole.APPROVER) {
+        approveAsApprover(proposal.id);
+      } else if (currentUser.role === UserRole.REGISTRAR) {
+        approveAsRegistrar(proposal.id);
+      }
+      
+      // Refresh proposal data
+      const refreshed = getProposalById(proposal.id);
+      setProposal(refreshed);
+      toast.success("Proposal approved successfully");
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(`Error: ${error.message}`);
+      } else {
+        toast.error("An unexpected error occurred");
+      }
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRejectSubmit = () => {
+    if (!proposal || !currentUser || !rejectionReason.trim()) return;
+    
+    setActionLoading(true);
+    
+    try {
+      // Different rejection functions based on user role
+      if (currentUser.role === UserRole.SUPERIOR || currentUser.role === UserRole.ADMIN) {
+        rejectProposal(proposal.id, rejectionReason);
+      } else if (currentUser.role === UserRole.APPROVER) {
+        rejectAsApprover(proposal.id, rejectionReason);
+      } else if (currentUser.role === UserRole.REGISTRAR) {
+        rejectAsRegistrar(proposal.id, rejectionReason);
+      }
+      
+      // Refresh proposal data
+      const refreshed = getProposalById(proposal.id);
+      setProposal(refreshed);
+      setRejectionReason("");
+      setShowRejectionInput(false);
+      toast.success("Proposal rejected");
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(`Error: ${error.message}`);
+      } else {
+        toast.error("An unexpected error occurred");
+      }
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRevisionSubmit = () => {
+    if (!proposal || !currentUser || !rejectionReason.trim()) return;
+    
+    setActionLoading(true);
+    
+    try {
+      // Different revision request functions based on user role
+      if (currentUser.role === UserRole.SUPERIOR || currentUser.role === UserRole.ADMIN) {
+        requestRevision(proposal.id, rejectionReason);
+      } else if (currentUser.role === UserRole.APPROVER) {
+        requestRevisionAsApprover(proposal.id, rejectionReason);
+      } else if (currentUser.role === UserRole.REGISTRAR) {
+        requestRevisionAsRegistrar(proposal.id, rejectionReason);
+      }
+      
+      // Refresh proposal data
+      const refreshed = getProposalById(proposal.id);
+      setProposal(refreshed);
+      setRejectionReason("");
+      setShowRevisionInput(false);
+      toast.success("Revision requested");
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(`Error: ${error.message}`);
+      } else {
+        toast.error("An unexpected error occurred");
+      }
+    } finally {
+      setActionLoading(false);
+    }
   };
   
   if (!proposal) {
@@ -275,6 +415,120 @@ const ProposalDetails = () => {
                 </div>
 
                 {renderApprovalSteps()}
+                
+                {/* Action buttons based on user role and proposal status */}
+                <div className="mt-6 space-y-4">
+                  {/* Approval, Rejection and Revision Buttons */}
+                  {canApprove() && (
+                    <div className="flex flex-wrap gap-2">
+                      <Button 
+                        variant="default"
+                        onClick={handleApproveClick}
+                        disabled={actionLoading}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <Check className="mr-1 h-4 w-4" />
+                        Approve
+                      </Button>
+                      
+                      {!showRejectionInput && (
+                        <Button 
+                          variant="destructive"
+                          onClick={() => {
+                            setShowRejectionInput(true);
+                            setShowRevisionInput(false);
+                          }}
+                          disabled={actionLoading}
+                        >
+                          <X className="mr-1 h-4 w-4" />
+                          Reject
+                        </Button>
+                      )}
+                      
+                      {!showRevisionInput && (
+                        <Button 
+                          variant="outline"
+                          className="border-amber-500 text-amber-700 hover:bg-amber-50"
+                          onClick={() => {
+                            setShowRevisionInput(true);
+                            setShowRejectionInput(false);
+                          }}
+                          disabled={actionLoading}
+                        >
+                          <ArrowUp className="mr-1 h-4 w-4" />
+                          Request Revision
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Rejection Reason Input */}
+                  {showRejectionInput && (
+                    <div className="space-y-2">
+                      <textarea
+                        className="w-full p-2 border rounded-md"
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        placeholder="Provide a reason for rejection..."
+                        rows={3}
+                        disabled={actionLoading}
+                      />
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="destructive"
+                          onClick={handleRejectSubmit}
+                          disabled={!rejectionReason.trim() || actionLoading}
+                        >
+                          Submit Rejection
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          onClick={() => {
+                            setShowRejectionInput(false);
+                            setRejectionReason("");
+                          }}
+                          disabled={actionLoading}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Revision Request Input */}
+                  {showRevisionInput && (
+                    <div className="space-y-2">
+                      <textarea
+                        className="w-full p-2 border rounded-md"
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        placeholder="Provide details for the requested revision..."
+                        rows={3}
+                        disabled={actionLoading}
+                      />
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline"
+                          className="border-amber-500 text-amber-700 hover:bg-amber-50"
+                          onClick={handleRevisionSubmit}
+                          disabled={!rejectionReason.trim() || actionLoading}
+                        >
+                          Submit Revision Request
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          onClick={() => {
+                            setShowRevisionInput(false);
+                            setRejectionReason("");
+                          }}
+                          disabled={actionLoading}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
                 {/* Resubmit logic */}
                 <div className="mt-6 flex gap-2">
