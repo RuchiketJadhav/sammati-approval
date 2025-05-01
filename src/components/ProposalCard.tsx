@@ -11,7 +11,9 @@ import {
   Clock, 
   XCircle, 
   User, 
-  Calendar 
+  Calendar,
+  DollarSign,
+  Timer
 } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -60,7 +62,77 @@ const ProposalCard: React.FC<ProposalCardProps> = ({ proposal, className }) => {
             Rejected
           </Badge>
         );
+      default:
+        return (
+          <Badge variant="outline" className="badge-pending">
+            <Clock className="mr-1 h-3 w-3" />
+            {status.replace("_", " ")}
+          </Badge>
+        );
     }
+  };
+
+  // Function to render proposal details based on the fields available
+  const renderProposalDetails = () => {
+    const details = [];
+    
+    if (proposal.budget) {
+      details.push(
+        <div key="budget" className="flex items-center text-sm mb-1">
+          <DollarSign className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+          <span className="font-medium mr-1">Budget:</span> {proposal.budget}
+        </div>
+      );
+    }
+    
+    if (proposal.timeline) {
+      details.push(
+        <div key="timeline" className="flex items-center text-sm mb-1">
+          <Timer className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+          <span className="font-medium mr-1">Timeline:</span> {proposal.timeline}
+        </div>
+      );
+    }
+    
+    if (proposal.department) {
+      details.push(
+        <div key="department" className="flex items-center text-sm mb-1">
+          <span className="font-medium mr-1">Department:</span> {proposal.department}
+        </div>
+      );
+    }
+    
+    if (proposal.justification) {
+      details.push(
+        <div key="justification" className="flex items-center text-sm mb-1">
+          <span className="font-medium mr-1">Justification:</span> 
+          <span className="truncate">{proposal.justification.length > 50 ? `${proposal.justification.substring(0, 50)}...` : proposal.justification}</span>
+        </div>
+      );
+    }
+    
+    // Render any additional custom fields from fieldValues if they exist
+    if (proposal.fieldValues) {
+      Object.entries(proposal.fieldValues).forEach(([key, value]) => {
+        // Skip fields we've already displayed
+        if (!['budget', 'timeline', 'department', 'justification'].includes(key) && value) {
+          details.push(
+            <div key={key} className="flex items-center text-sm mb-1">
+              <span className="font-medium mr-1">{key.charAt(0).toUpperCase() + key.slice(1)}:</span> 
+              {typeof value === 'string' ? 
+                (value.length > 50 ? `${value.substring(0, 50)}...` : value) : 
+                String(value)}
+            </div>
+          );
+        }
+      });
+    }
+    
+    return details.length > 0 ? (
+      <div className="border-t border-border/50 pt-3 mb-3">
+        {details}
+      </div>
+    ) : null;
   };
 
   return (
@@ -83,6 +155,9 @@ const ProposalCard: React.FC<ProposalCardProps> = ({ proposal, className }) => {
             <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
               {proposal.description}
             </p>
+            
+            {renderProposalDetails()}
+            
             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
               <div className="flex items-center">
                 <User className="mr-1 h-3.5 w-3.5" />
