@@ -1,4 +1,3 @@
-
 import React from "react";
 import { format } from "date-fns";
 import { Proposal, ProposalStatus } from "@/utils/types";
@@ -13,7 +12,9 @@ import {
   User, 
   Calendar,
   DollarSign,
-  Timer
+  Timer,
+  FileText,
+  Info
 } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -72,13 +73,25 @@ const ProposalCard: React.FC<ProposalCardProps> = ({ proposal, className }) => {
     }
   };
 
-  // Function to render proposal details based on the fields available
+  // Enhanced function to render ALL proposal details available
   const renderProposalDetails = () => {
     const details = [];
     
+    // Always show description with a clear label
+    details.push(
+      <div key="description" className="flex flex-col text-sm mb-2">
+        <div className="flex items-center mb-1">
+          <FileText className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+          <span className="font-medium">Description:</span>
+        </div>
+        <div className="ml-5 line-clamp-3">{proposal.description}</div>
+      </div>
+    );
+    
+    // Standard fields with icons
     if (proposal.budget) {
       details.push(
-        <div key="budget" className="flex items-center text-sm mb-1">
+        <div key="budget" className="flex items-center text-sm mb-2">
           <DollarSign className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
           <span className="font-medium mr-1">Budget:</span> {proposal.budget}
         </div>
@@ -87,7 +100,7 @@ const ProposalCard: React.FC<ProposalCardProps> = ({ proposal, className }) => {
     
     if (proposal.timeline) {
       details.push(
-        <div key="timeline" className="flex items-center text-sm mb-1">
+        <div key="timeline" className="flex items-center text-sm mb-2">
           <Timer className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
           <span className="font-medium mr-1">Timeline:</span> {proposal.timeline}
         </div>
@@ -96,7 +109,8 @@ const ProposalCard: React.FC<ProposalCardProps> = ({ proposal, className }) => {
     
     if (proposal.department) {
       details.push(
-        <div key="department" className="flex items-center text-sm mb-1">
+        <div key="department" className="flex items-center text-sm mb-2">
+          <Info className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
           <span className="font-medium mr-1">Department:</span> {proposal.department}
         </div>
       );
@@ -104,9 +118,21 @@ const ProposalCard: React.FC<ProposalCardProps> = ({ proposal, className }) => {
     
     if (proposal.justification) {
       details.push(
-        <div key="justification" className="flex items-center text-sm mb-1">
-          <span className="font-medium mr-1">Justification:</span> 
-          <span className="truncate">{proposal.justification.length > 50 ? `${proposal.justification.substring(0, 50)}...` : proposal.justification}</span>
+        <div key="justification" className="flex flex-col text-sm mb-2">
+          <div className="flex items-center mb-1">
+            <Info className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+            <span className="font-medium">Justification:</span>
+          </div>
+          <div className="ml-5 line-clamp-3">{proposal.justification}</div>
+        </div>
+      );
+    }
+    
+    if (proposal.type) {
+      details.push(
+        <div key="type" className="flex items-center text-sm mb-2">
+          <FileText className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+          <span className="font-medium mr-1">Type:</span> {proposal.type}
         </div>
       );
     }
@@ -114,13 +140,13 @@ const ProposalCard: React.FC<ProposalCardProps> = ({ proposal, className }) => {
     // Render any additional custom fields from fieldValues if they exist
     if (proposal.fieldValues) {
       Object.entries(proposal.fieldValues).forEach(([key, value]) => {
-        // Skip fields we've already displayed
-        if (!['budget', 'timeline', 'department', 'justification'].includes(key) && value) {
+        if (value) {
           details.push(
-            <div key={key} className="flex items-center text-sm mb-1">
+            <div key={key} className="flex items-center text-sm mb-2">
+              <Info className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
               <span className="font-medium mr-1">{key.charAt(0).toUpperCase() + key.slice(1)}:</span> 
               {typeof value === 'string' ? 
-                (value.length > 50 ? `${value.substring(0, 50)}...` : value) : 
+                (value.length > 100 ? `${value.substring(0, 100)}...` : value) : 
                 String(value)}
             </div>
           );
@@ -152,10 +178,7 @@ const ProposalCard: React.FC<ProposalCardProps> = ({ proposal, className }) => {
             </div>
           </CardHeader>
           <CardContent className="p-4">
-            <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
-              {proposal.description}
-            </p>
-            
+            {/* Render all proposal details instead of just the description */}
             {renderProposalDetails()}
             
             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
